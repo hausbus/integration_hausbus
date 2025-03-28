@@ -22,7 +22,7 @@ The easiest way to install **Hausbus* is via **[HACS (Home Assistant Community S
 
 ## Supported devices
 
-Currently only light based devices are supported, i.e. all dimmer channels on the devices [IO-Module](https://haus-bus.secure-stores.de/?showProduct=6), [8-channel 230V dimmer](https://haus-bus.secure-stores.de/?showProduct=14), [2-channel RGB dimmer](https://haus-bus.secure-stores.de/?showProduct=9).
+Currently only switch and light based devices are supported, i.e. all relais and dimmer channels on the devices [16 channel relais](https://haus-bus.de/?showProduct=8), [12 channel relais](https://haus-bus.de/?showProduct=20), [8-channel IO-Module](https://haus-bus.de/?showProduct=6), [22-channel IO-module](https://haus-bus.de/?showProduct=5), [32-channel IO-module](https://haus-bus.de/?showProduct=2) [8-channel 230V dimmer](https://haus-bus.de/?showProduct=14), [2-channel RGB dimmer](https://haus-bus.de/?showProduct=9).
 
 The supported devices are automatically detected in the local network via UDP broadcast, upon loading the integration.
 

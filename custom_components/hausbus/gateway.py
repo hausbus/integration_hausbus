@@ -22,6 +22,7 @@ from pyhausbus.IBusDataListener import IBusDataListener
 from pyhausbus.ObjectId import ObjectId
 
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -36,6 +37,7 @@ from .light import (
     Led,
     RGBDimmer,
 )
+from .switch import HausbusSwitch, Schalter
 
 
 class HausbusGateway(IBusDataListener):  # type: ignore[misc]
@@ -129,6 +131,32 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 ).result()
                 light.get_hardware_status()
 
+    def create_switch_entity(
+        self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
+    ) -> HausbusSwitch | None:
+        """Create a switch entity according to the type of instance."""
+        if isinstance(instance, Schalter):
+            return HausbusSwitch(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
+        return None
+
+    def add_switch_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
+        """Add a new Haus-Bus Switch Channel to this gateway's channel list."""
+
+        device = self.get_device(object_id)
+        if device is not None:
+            switch = self.create_switch_entity(device, instance, object_id)
+            channel_list = self.get_channel_list(object_id)
+            if switch is not None and channel_list is not None:
+                channel_list[self.get_channel_id(object_id)] = switch
+                asyncio.run_coroutine_threadsafe(
+                    self._new_channel_listeners[SWITCH_DOMAIN](switch), self.hass.loop
+                ).result()
+                switch.get_hardware_status()
+
     def add_channel(self, instance: ABusFeature) -> None:
         """Add a new Haus-Bus Channel to this gateways channel list."""
         object_id = ObjectId(instance.getObjectId())
@@ -139,6 +167,8 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         ):
             if HausbusLight.is_light_channel(object_id.getClassId()):
                 self.add_light_channel(instance, object_id)
+            if HausbusSwitch.is_switch_channel(object_id.getClassId()):
+                self.add_switch_channel(instance, object_id)
 
     def busDataReceived(self, busDataMessage: BusDataMessage) -> None:
         """Handle Haus-Bus messages."""
@@ -170,11 +200,14 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             for instance in instances:
                 # handle channels for the sending device
                 self.add_channel(instance)
-        # light event handling
         channel = self.get_channel(object_id)
         if channel is not None:
+            # light event handling
             if isinstance(channel, HausbusLight):
                 channel.handle_light_event(data)
+            # switch event handling
+            if isinstance(channel, HausbusSwitch):
+                channel.handle_switch_event(data)
 
     def register_platform_add_channel_callback(
         self,
