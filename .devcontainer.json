@@ -1,6 +1,9 @@
 {
-    "name": "ludeeus/integration_blueprint",
+    "name": "Zero545/integration_hausbus",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
+    "runArgs": [
+        "--network=host"
+    ],
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [
         8123
