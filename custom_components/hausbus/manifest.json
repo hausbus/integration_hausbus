@@ -2,7 +2,7 @@
   "domain": "hausbus",
   "name": "Haus-Bus",
   "codeowners": [
-    "@Zero545"
+    "@hausbus"
   ],
   "config_flow": true,
   "dependencies": [],

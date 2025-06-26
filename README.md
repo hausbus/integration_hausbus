@@ -10,13 +10,13 @@ This integration communicates to any of the Haus-Bus devices equipped with a LAN
 
 The easiest way to install **Hausbus* is via **[HACS (Home Assistant Community Store)](https://hacs.xyz/)**.
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Zero545&repository=integration_hausbus&category=Integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hausbus&repository=integration_hausbus&category=Integration)
 
 ### Manual Steps:
 
 1. Ensure **[HACS](https://hacs.xyz/docs/setup/download)** is installed in Home Assistant.
 2. Go to **HACS → Custom Repositories**.
-3. Add this repository: `https://github.com/Zero545/integration_hausbus` as type `Integration`
+3. Add this repository: `https://github.com/hausbus/integration_hausbus` as type `Integration`
 4. Install **Hausbus** from HACS.
 5. **Clear your browser cache** and reload Home Assistant.
 
