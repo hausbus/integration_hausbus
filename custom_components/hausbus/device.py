@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from pyhausbus import HausBusDevice
 from pyhausbus.de.hausbus.homeassistant.proxy.controller.params.EFirmwareId import (
     EFirmwareId,
 )
-
+from pyhausbus.Templates import Templates
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
@@ -45,5 +44,5 @@ class HausbusDevice:
 
     def set_type(self, type_id: int) -> None:
         """Set device name and model_id according to device type."""
-        self.model_id = HausBusDevice.get_device_type(self.firmware_id, type_id)
+        self.model_id = Templates.getModuleName(self.firmware_id, type_id)
         self.name = f"{self.model_id} {self.device_id}"

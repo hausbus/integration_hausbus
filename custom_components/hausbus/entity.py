@@ -18,7 +18,7 @@ class HausbusEntity(Entity):
     _attr_has_entity_name = True
 
     def __init__(
-        self, channel_type: str, instance_id: int, device: HausbusDevice
+        self, channel_type: str, instance_id: int, device: HausbusDevice, channel_name: str
     ) -> None:
         """Set up channel."""
         self._type = channel_type.lower()
@@ -29,7 +29,7 @@ class HausbusEntity(Entity):
         )
         self._attr_device_info = self._device.device_info
         self._attr_translation_key = self._type
-        self._attr_name = f"{channel_type} {self._instance_id}"
+        self._attr_name = channel_name
 
     @callback
     def async_update_callback(self, **kwargs: Any) -> None:

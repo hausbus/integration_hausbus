@@ -54,7 +54,7 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
         channel: Schalter,
     ) -> None:
         """Set up switch."""
-        super().__init__(channel.__class__.__name__, instance_id, device)
+        super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
 
         self._channel = channel
         self._attr_is_on = False

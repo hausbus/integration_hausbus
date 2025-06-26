@@ -75,7 +75,7 @@ class HausbusLight(HausbusEntity, LightEntity):
         channel: ABusFeature,
     ) -> None:
         """Set up light."""
-        super().__init__(channel.__class__.__name__, instance_id, device)
+        super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
 
         self._attr_is_on = False
         self._attr_brightness = 255
