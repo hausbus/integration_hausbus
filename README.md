@@ -16,7 +16,7 @@ The easiest way to install **Hausbus* is via **[HACS (Home Assistant Community S
 
 1. Ensure **[HACS](https://hacs.xyz/docs/setup/download)** is installed in Home Assistant.
 2. Go to **HACS → Custom Repositories**.
-3. Add this repository: `https://github.com/Zero545/integration_hausbus` as type `Integration`
+3. Add this repository: `https://github.com/hausbus/integration_hausbus` as type `Integration`
 4. Install **Hausbus** from HACS.
 5. **Clear your browser cache** and reload Home Assistant.
 
