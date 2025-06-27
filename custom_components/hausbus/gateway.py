@@ -1,7 +1,7 @@
 """Representation of a Haus-Bus gateway."""
 
 from __future__ import annotations
-
+import logging
 import asyncio
 from collections.abc import Callable, Coroutine
 from typing import Any, cast
@@ -55,6 +55,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         self._new_channel_listeners: dict[
             str, Callable[[HausbusEntity], Coroutine[Any, Any, None]]
         ] = {}
+        self.LOGGER = logging.getLogger("hausbusintegration")
 
     def add_device(self, device_id: str, module: ModuleId) -> None:
         """Add a new Haus-Bus Device to this gateway's device list."""
@@ -183,10 +184,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         controller = Controller(object_id.getValue())
 
         if isinstance(data, ModuleId):
+            self.LOGGER.debug(f"got moduleId of {object_id.getDeviceId()} with data: {data}")
             self.add_device(str(object_id.getDeviceId()),data)
             controller.getConfiguration()
             
         if isinstance(data, Configuration):
+            self.LOGGER.debug(f"got configuration of {object_id.getDeviceId()} with data: {data}")
             config = cast(Configuration, data)
             device = self.get_device(object_id)
             if device is not None:
@@ -194,6 +197,8 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 controller.getRemoteObjects()
             
         if isinstance(data, RemoteObjects):
+            self.LOGGER.debug(f"got remoteObjects of {object_id.getDeviceId()} with data: {data}")
+            
             device = self.get_device(object_id)
             if device is not None:
               templates = Templates.get_instance()
