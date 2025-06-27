@@ -14,7 +14,7 @@
   ],
   "quality_scale": "bronze",
   "requirements": [
-    "pyhausbus==1.0.1"
+    "pyhausbus==1.0.3"
   ],
   "single_config_entry": true,
   "version": "1.0.2"
