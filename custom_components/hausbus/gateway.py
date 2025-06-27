@@ -12,6 +12,7 @@ from pyhausbus.de.hausbus.homeassistant.proxy.Controller import Controller
 from pyhausbus.de.hausbus.homeassistant.proxy.controller.data.Configuration import (
     Configuration,
 )
+from pyhausbus.Templates import Templates
 from pyhausbus.de.hausbus.homeassistant.proxy.controller.data.ModuleId import ModuleId
 from pyhausbus.de.hausbus.homeassistant.proxy.controller.data.RemoteObjects import (
     RemoteObjects,
@@ -182,32 +183,34 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         controller = Controller(object_id.getValue())
 
         if isinstance(data, ModuleId):
-            self.add_device(
-                str(object_id.getDeviceId()),
-                data,
-            )
+            self.add_device(str(object_id.getDeviceId()),data)
             controller.getConfiguration()
+            
         if isinstance(data, Configuration):
             config = cast(Configuration, data)
             device = self.get_device(object_id)
             if device is not None:
                 device.set_type(config.getFCKE())
-            controller.getRemoteObjects()
+                controller.getRemoteObjects()
+            
         if isinstance(data, RemoteObjects):
-            instances: list[ABusFeature] = self.home_server.getDeviceInstances(
-                object_id.getValue(), data
-            )
-            for instance in instances:
+            device = self.get_device(object_id)
+            if device is not None:
+              templates = Templates.get_instance()
+              instances: list[ABusFeature] = self.home_server.getDeviceInstances(object_id.getValue(), data)
+              for instance in instances:
                 # handle channels for the sending device
+                instance.setName(templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId()))
                 self.add_channel(instance)
-        channel = self.get_channel(object_id)
-        if channel is not None:
-            # light event handling
-            if isinstance(channel, HausbusLight):
-                channel.handle_light_event(data)
-            # switch event handling
-            if isinstance(channel, HausbusSwitch):
-                channel.handle_switch_event(data)
+              
+              channel = self.get_channel(object_id)
+              if channel is not None:
+                # light event handling
+                if isinstance(channel, HausbusLight):
+                  channel.handle_light_event(data)
+                # switch event handling
+                if isinstance(channel, HausbusSwitch):
+                  channel.handle_switch_event(data)
 
     def register_platform_add_channel_callback(
         self,
