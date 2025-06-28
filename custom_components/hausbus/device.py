@@ -45,5 +45,5 @@ class HausbusDevice:
     def set_type(self, fcke: int) -> None:
         self.fcke = fcke
         """Set device name and model_id according to device type."""
-        self.model_id = Templates.getModuleName(self.firmware_id, fcke)
+        self.model_id = Templates.get_instance().getModuleName(self.firmware_id, fcke)
         self.name = f"{self.model_id} {self.device_id}"
