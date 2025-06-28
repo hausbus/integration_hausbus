@@ -176,10 +176,15 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         """Handle Haus-Bus messages."""
         object_id = ObjectId(busDataMessage.getSenderObjectId())
         data = busDataMessage.getData()
+        deviceId = object_id.getDeviceId()
 
-        if object_id.getDeviceId() == HOMESERVER_DEVICE_ID:
-            # ignore messages sent from this module
+        # ignore messages sent from this module
+        if deviceId == HOMESERVER_DEVICE_ID or deviceId == 9999 or deviceId == 12222:
             return
+
+        if deviceId in [110, 503, 1000,1541,3422,4000,4001,4002,4003,4004,4005,4009,4096,5068,8192,8270,11581,12223,12622,13976,14896,18343,19075,20043,21336,22784,22909,24261,25661,25874,28900,29725,3423,4006,4008]:
+            return
+
 
         controller = Controller(object_id.getValue())
 
