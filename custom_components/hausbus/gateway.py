@@ -214,16 +214,21 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, instanceObjectId.getClassId(), instanceObjectId.getInstanceId())
                 LOGGER.debug(f"name for firmwareId {device.firmware_id}, fcke: {device.fcke}, classId {instanceObjectId.getClassId()}, instanceId {instanceObjectId.getInstanceId()} is {name}")
                 instance.setName(name)
-                self.add_channel(instance)
+                if name is not None:
+                  self.add_channel(instance)
               
-              channel = self.get_channel(object_id)
-              if channel is not None:
-                # light event handling
-                if isinstance(channel, HausbusLight):
-                  channel.handle_light_event(data)
-                # switch event handling
-                if isinstance(channel, HausbusSwitch):
-                  channel.handle_switch_event(data)
+        channel = self.get_channel(object_id)
+        if channel is not None:
+          # light event handling
+          if isinstance(channel, HausbusLight):
+            channel.handle_light_event(data)
+          # switch event handling
+          elif isinstance(channel, HausbusSwitch):
+            channel.handle_switch_event(data)
+          else:
+            LOGGER.debug(f"nicht unterstützter channel type {channel}")
+        else:
+            LOGGER.debug(f"unbekannter channel {object_id}")
 
     def register_platform_add_channel_callback(
         self,
