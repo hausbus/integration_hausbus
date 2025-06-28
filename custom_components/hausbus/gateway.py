@@ -40,7 +40,7 @@ from .light import (
 )
 from .switch import HausbusSwitch, Schalter
 
-LOGGER = logging.getLogger("integrationhausbus")
+LOGGER = logging.getLogger(__name__)
 
 class HausbusGateway(IBusDataListener):  # type: ignore[misc]
     """Manages a single Haus-Bus gateway."""
@@ -210,7 +210,10 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               instances: list[ABusFeature] = self.home_server.getDeviceInstances(object_id.getValue(), data)
               for instance in instances:
                 # handle channels for the sending device
-                instance.setName(templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId()))
+                instanceObjectId = ObjectId(instance.getObjectId())
+                name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, instanceObjectId.getClassId(), instanceObjectId.getInstanceId())
+                LOGGER.debug(f"name for firmwareId {device.firmware_id}, fcke: {device.fcke}, classId {instanceObjectId.getClassId()}, instanceId {instanceObjectId.getInstanceId()} is {name}")
+                instance.setName(name)
                 self.add_channel(instance)
               
               channel = self.get_channel(object_id)
