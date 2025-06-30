@@ -22,11 +22,13 @@ from pyhausbus.HomeServer import HomeServer
 from pyhausbus.IBusDataListener import IBusDataListener
 from pyhausbus.ObjectId import ObjectId
 
+from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .binary_sensor import HausbusBinarySensor, Taster
 from .device import HausbusDevice
 from .entity import HausbusEntity
 from .light import (
@@ -159,6 +161,33 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 ).result()
                 switch.get_hardware_status()
 
+    def create_binary_sensor_entity(
+        self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
+    ) -> HausbusBinarySensor | None:
+        """Create a binary sensor entity according to the type of instance."""
+        if isinstance(instance, Taster):
+            """log current device information"""
+            return HausbusBinarySensor(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
+        return None
+    
+    def add_binary_sensor_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
+        """Add a new Haus-Bus binary sensor channel to this gateway's channel list."""
+
+        device = self.get_device(object_id)
+        if device is not None:
+            binary_sensor = self.create_binary_sensor_entity(device, instance, object_id)
+            channel_list = self.get_channel_list(object_id)
+            if binary_sensor is not None and channel_list is not None:
+                channel_list[self.get_channel_id(object_id)] = binary_sensor
+                asyncio.run_coroutine_threadsafe(
+                    self._new_channel_listeners[BINARY_SENSOR_DOMAIN](binary_sensor), self.hass.loop
+                ).result()
+                binary_sensor.get_hardware_status()
+
     def add_channel(self, instance: ABusFeature) -> None:
         """Add a new Haus-Bus Channel to this gateways channel list."""
         object_id = ObjectId(instance.getObjectId())
@@ -171,6 +200,8 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 self.add_light_channel(instance, object_id)
             if HausbusSwitch.is_switch_channel(object_id.getClassId()):
                 self.add_switch_channel(instance, object_id)
+            if HausbusBinarySensor.is_binary_sensor_channel(object_id.getClassId()):
+                self.add_binary_sensor_channel(instance, object_id)
 
     def busDataReceived(self, busDataMessage: BusDataMessage) -> None:
         """Handle Haus-Bus messages."""
@@ -225,6 +256,9 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           # switch event handling
           elif isinstance(channel, HausbusSwitch):
             channel.handle_switch_event(data)
+          # binary sensor event handling
+          elif isinstance(channel, HausbusBinarySensor):
+            channel.handle_binary_sensor_event(data)
           else:
             LOGGER.debug(f"nicht unterstützter channel type {channel}")
         else:
