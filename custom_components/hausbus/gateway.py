@@ -1,5 +1,5 @@
 """Representation of a Haus-Bus gateway."""
-
+ 
 from __future__ import annotations
 import logging
 import asyncio
@@ -226,7 +226,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           elif isinstance(channel, HausbusSwitch):
             channel.handle_switch_event(data)
           else:
-            LOGGER.debug(f"nicht unterstützter channel type {channel}")
+            LOGGER.debug(f"nicht unterstÃ¼tzter channel type {channel}")
         else:
             LOGGER.debug(f"unbekannter channel {object_id}")
 
