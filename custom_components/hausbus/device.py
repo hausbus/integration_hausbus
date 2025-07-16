@@ -7,6 +7,7 @@ from pyhausbus.de.hausbus.homeassistant.proxy.controller.params.EFirmwareId impo
 )
 from pyhausbus.Templates import Templates
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import DOMAIN
 
@@ -30,6 +31,7 @@ class HausbusDevice:
         self.hardware_version = hw_version
         self.firmware_id = firmware_id
 
+    ''' Die DeviceInfo ist die Beschreibung, mit der ein Gerät der Registry vorgeschlagen wird.'''
     @property
     def device_info(self) -> DeviceInfo:
         """Return a device description for device registry."""
@@ -47,3 +49,7 @@ class HausbusDevice:
         """Set device name and model_id according to device type."""
         self.model_id = Templates.get_instance().getModuleName(self.firmware_id, fcke)
         self.name = f"{self.model_id} {self.device_id}"
+
+    ''' Der DeviceEntry ist das tatsächlich registrierte Gerät in der Registry mit einer eindeutigen .id, die für das Versenden von Events gebraucht wird ''' 
+    def setHassDeviceEntry(self, hass_device_entry: DeviceEntry):
+      self.hass_device_entry = hass_device_entry
