@@ -238,7 +238,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           device = self.get_device(object_id)
           if device is not None:
             device.set_type(config.getFCKE())
-            device_registry = await async_get_device_registry(self.hass)
+            device_registry = asyncio.run_coroutine_threadsafe(async_get_device_registry(self.hass), self.hass.loop).result()
             device_entry = device_registry.async_get_or_create(
               config_entry_id=self.config_entry.entry_id,
               identifiers={(DOMAIN, device.model_id)},
