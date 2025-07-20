@@ -10,7 +10,7 @@ TRIGGER_TYPES = {"button_pressed", "button_released", "button_clicked", "button_
 
 async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[str, Any]]:
   
-    device_registry = async_get_device_registry(hass)
+    device_registry = await async_get_device_registry(hass)
     device = device_registry.async_get(device_id)
 
     if device is None:
