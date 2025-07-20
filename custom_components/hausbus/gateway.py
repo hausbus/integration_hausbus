@@ -246,7 +246,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               model=device.model_id,
               name=device.name,
               )
-            LOGGER.debug("hassEntryId = {device_entry.id}")
+            LOGGER.debug(f"hassEntryId = {device_entry.id}")
             device.setHassDeviceEntry(device_entry)
                 
             controller.getRemoteObjects()
@@ -275,7 +275,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           controller.getModuleId(EIndex.RUNNING)
           return
 
-        ''' Tasterevents (dazu gibt es keine Entity '''
+        ''' Tasterevents (dazu gibt es keine Entity) '''
         if isinstance(data, EvCovered):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
           buttonName = f"button_{self.extract_final_number(name)}"
