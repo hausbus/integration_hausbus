@@ -3,7 +3,14 @@ from homeassistant.core import HomeAssistant, CALLBACK_TYPE
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 
-''' definiert individuelle TriggerEvents z.b. der Taster '''
+"""
+Gibt Trigger für Geräte zurück, z.B.:
+- button_pressed
+- button_released
+...
+Je nach Modellanzahl (1–6-fach Taster) wird für jeden Button ein Subtype wie "button_1" etc. erzeugt.
+"""
+
 DOMAIN = "hausbus"
 
 TRIGGER_TYPES = {"button_pressed", "button_released", "button_clicked", "button_double_clicked", "button_hold_start", "button_hold_end"}
