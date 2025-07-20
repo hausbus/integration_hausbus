@@ -319,4 +319,4 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
       match = re.search(r"(\d+)$", text.strip())
       if match:
         return int(match.group(1))
-    return None
+      return None
