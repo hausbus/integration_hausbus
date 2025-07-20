@@ -62,6 +62,9 @@ async def async_attach_trigger(
             return
         if event.data.get("type") != config["type"]:
             return
+        if event.data.get("subtype") != config.get("subtype"):
+            return
+          
         await action({
             "platform": "device",
             "domain": DOMAIN,
