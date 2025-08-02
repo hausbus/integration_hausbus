@@ -31,7 +31,11 @@ class HausbusDevice:
         self.hardware_version = hw_version
         self.firmware_id = firmware_id
 
+<<<<<<< HEAD
     ''' Die DeviceInfo ist die Beschreibung, mit der ein Gerät der Registry vorgeschlagen wird.'''
+=======
+    """ Die DeviceInfo ist die Beschreibung, mit der ein GerÃ¤t der Registry vorgeschlagen wird."""
+>>>>>>> 27d82c06bc0d4d913b4efa14941bda1f6bcb6503
     @property
     def device_info(self) -> DeviceInfo:
         """Return a device description for device registry."""
@@ -50,6 +54,10 @@ class HausbusDevice:
         self.model_id = Templates.get_instance().getModuleName(self.firmware_id, fcke)
         self.name = f"{self.model_id} {self.device_id}"
 
+<<<<<<< HEAD
     ''' Der DeviceEntry ist das tatsächlich registrierte Gerät in der Registry mit einer eindeutigen .id, die für das Versenden von Events gebraucht wird ''' 
+=======
+    """ Der DeviceEntry ist das tatsÃ¤chlich registrierte GerÃ¤t in der Registry mit einer eindeutigen .id, die fÃ¼r das Versenden von Events gebraucht wird """
+>>>>>>> 27d82c06bc0d4d913b4efa14941bda1f6bcb6503
     def setHassDeviceEntry(self, hass_device_entry: DeviceEntry):
       self.hass_device_entry = hass_device_entry

@@ -5,6 +5,7 @@
     "@hausbus"
   ],
   "config_flow": true,
+  "device_automation": true,
   "dependencies": [],
   "documentation": "https://www.home-assistant.io/integrations/hausbus",
   "homekit": {},

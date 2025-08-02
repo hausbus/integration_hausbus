@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from .gateway import HausbusGateway
 from .const import DOMAIN
 
-PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
