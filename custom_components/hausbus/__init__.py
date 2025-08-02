@@ -9,9 +9,8 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-
-from .const import DOMAIN
 from .gateway import HausbusGateway
+from .const import DOMAIN
 
 PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH]
 
