@@ -191,37 +191,31 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         if deviceId in [110, 503, 1000,1541,3422,4000,4001,4002,4003,4004,4005,4009,4096,5068,8192,8270,11581,12223,12622,13976,14896,18343,19075,20043,21336,22784,22909,24261,25661,25874,28900,29725,3423,4006,4008]:
             return
 
+        LOGGER.debug(f"busDataReceived with data = {data}")
+
         controller = Controller(object_id.getValue())
 
-        ''' Bei ModuleId -> getConfiguration '''
+        """ Bei ModuleId -> getConfiguration """
         if isinstance(data, ModuleId):
           LOGGER.debug(f"got moduleId of {object_id.getDeviceId()} with data: {data}")
           self.add_device(str(object_id.getDeviceId()),data)
           controller.getConfiguration()
           return
         
-        ''' Bei Configuration -> getRemoteObjects '''    
+        """ Bei Configuration -> getRemoteObjects """    
         if isinstance(data, Configuration):
           LOGGER.debug(f"got configuration of {object_id.getDeviceId()} with data: {data}")
           config = cast(Configuration, data)
           device = self.get_device(object_id)
           if device is not None:
             device.set_type(config.getFCKE())
-            device_registry = await async_get_device_registry(self.hass)
-            device_entry = device_registry.async_get_or_create(
-              config_entry_id=self.config_entry.entry_id,
-              identifiers={(DOMAIN, device.model_id)},
-              manufacturer="HausBus",
-              model=device.model_id,
-              name=device.name,
-              )
-            LOGGER.debug("hassEntryId = {device_entry.id}")
-            device.setHassDeviceEntry(device_entry)
+            
+            future = asyncio.run_coroutine_threadsafe(self.async_update_device_registry(device), self.hass.loop)
                 
             controller.getRemoteObjects()
             return
 
-        ''' Bei Configuration -> channel anlegen '''    
+        """ Bei Configuration -> channel anlegen """    
         if isinstance(data, RemoteObjects):
           LOGGER.debug(f"got remoteObjects of {object_id.getDeviceId()} with data: {data}")
             
@@ -237,31 +231,32 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 self.add_channel(instance)
             return
         
-        ''' Bei unbekanntem Gerät -> ModuleId abfragen '''
+        """ Bei unbekanntem GerÃ¤t -> ModuleId abfragen """
         device = self.get_device(object_id)
         if device is None:
           LOGGER.debug(f"got event of unknown device {object_id.getDeviceId()} with data: {data} -> calling getModuleId")
           controller.getModuleId(EIndex.RUNNING)
           return
 
-        ''' Tasterevents (dazu gibt es keine Entity '''
+        """ Tasterevents (dazu gibt es keine Entity """
         if isinstance(data, EvCovered):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
           buttonName = f"button_{self.extract_final_number(name)}"
           hass_device_id = device.hass_device_entry.id
           LOGGER.debug(f"got evConvered of {object_id}, name = {name}, buttonName = {buttonName}, hassDeviceId = {hass_device_id}")
           
-          self.hass.bus.async_fire(
-            "hausbus_button_event",
-            {
-              "device_id": hass_device_id,
-              "type": "button_pressed", 
-              "subtype": buttonName,
-            }
+          self.hass.loop.call_soon_threadsafe(
+             lambda: self.hass.bus.async_fire(
+               "hausbus_button_event",
+               {
+                 "device_id": hass_device_id,
+                 "type": "button_pressed",
+                 "subtype": buttonName,
+               }
+             )
           )
-          return
  
-        ''' Alles andere wird an die jeweiligen Channel weitergeleitet '''        
+        """ Alles andere wird an die jeweiligen Channel weitergeleitet """        
         channel = self.get_channel(object_id)
         # light event handling
         if isinstance(channel, HausbusLight):
@@ -270,7 +265,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         elif isinstance(channel, HausbusSwitch):
           channel.handle_switch_event(data)
         else:
-          LOGGER.debug(f"nicht unterstützter channel type {channel}")
+          LOGGER.debug(f"nicht unterstÃ¼tzter channel type {channel}")
 
     def register_platform_add_channel_callback(
         self,
@@ -284,4 +279,16 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
       match = re.search(r"(\d+)$", text.strip())
       if match:
         return int(match.group(1))
-    return None
+      return None
+
+    async def async_update_device_registry(self, device: HausbusDevice):
+      device_registry = async_get_device_registry(self.hass)
+      device_entry = device_registry.async_get_or_create(
+        config_entry_id=self.config_entry.entry_id,
+        identifiers={(DOMAIN, device.model_id)},
+        manufacturer="HausBus",
+        model=device.model_id,
+        name=device.name,
+      )
+      LOGGER.debug(f"hassEntryId = {device_entry.id}")
+      device.setHassDeviceEntry(device_entry)

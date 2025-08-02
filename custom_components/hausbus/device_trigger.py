@@ -2,11 +2,20 @@ from typing import Any, Callable, Awaitable
 from homeassistant.core import HomeAssistant, CALLBACK_TYPE
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+import voluptuous as vol
+from homeassistant.components.device_automation.trigger import DEVICE_TRIGGER_BASE_SCHEMA
 
-''' definiert individuelle TriggerEvents z.b. der Taster '''
+""" definiert individuelle TriggerEvents z.b. der Taster """
 DOMAIN = "hausbus"
 
 TRIGGER_TYPES = {"button_pressed", "button_released", "button_clicked", "button_double_clicked", "button_hold_start", "button_hold_end"}
+
+TRIGGER_SCHEMA = DEVICE_TRIGGER_BASE_SCHEMA.extend(
+    {
+        vol.Required("type"): vol.In(TRIGGER_TYPES),
+        vol.Required("subtype"): str,
+    }
+)
 
 async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[str, Any]]:
   
