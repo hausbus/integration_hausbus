@@ -42,6 +42,12 @@ from .light import (
 )
 from .switch import HausbusSwitch, Schalter
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import EvCovered
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvFree import EvFree
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvHoldStart import EvHoldStart
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvHoldEnd import EvHoldEnd
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvClicked import EvClicked
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvDoubleClick import EvDoubleClick
+from pyhausbus.de.hausbus.homeassistant.proxy.Taster import Taster
 
 DOMAIN = "hausbus"
 
@@ -195,14 +201,14 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
 
         controller = Controller(object_id.getValue())
 
-        """ Bei ModuleId -> getConfiguration """
+        # Bei ModuleId -> getConfiguration
         if isinstance(data, ModuleId):
           LOGGER.debug(f"got moduleId of {object_id.getDeviceId()} with data: {data}")
           self.add_device(str(object_id.getDeviceId()),data)
           controller.getConfiguration()
           return
         
-        """ Bei Configuration -> getRemoteObjects """    
+        # Bei Configuration -> getRemoteObjects 
         if isinstance(data, Configuration):
           LOGGER.debug(f"got configuration of {object_id.getDeviceId()} with data: {data}")
           config = cast(Configuration, data)
@@ -210,18 +216,21 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           if device is not None:
             device.set_type(config.getFCKE())
             
-            future = asyncio.run_coroutine_threadsafe(self.async_update_device_registry(device), self.hass.loop)
+            asyncio.run_coroutine_threadsafe(self.async_create_device_registry(device), self.hass.loop)
                 
             controller.getRemoteObjects()
             return
 
-        """ Bei Configuration -> channel anlegen """    
+        # Bei RemoteObjects  -> channel anlegen 
         if isinstance(data, RemoteObjects):
           LOGGER.debug(f"got remoteObjects of {object_id.getDeviceId()} with data: {data}")
             
           device = self.get_device(object_id)
           if device is not None:
             instances: list[ABusFeature] = self.home_server.getDeviceInstances(object_id.getValue(), data)
+            
+            # Inputs merken für die Trigger
+            inputs = []
             for instance in instances:
               instanceObjectId = ObjectId(instance.getObjectId())
               name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, instanceObjectId.getClassId(), instanceObjectId.getInstanceId())
@@ -229,21 +238,27 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               instance.setName(name)
               if name is not None:
                 self.add_channel(instance)
+                if isinstance(instance, Taster):
+                   inputs.append(name)
+            
+            self.hass.data.setdefault(DOMAIN, {})
+            self.hass.data[DOMAIN][device.hass_device_entry.id] = {"inputs": inputs}
+            LOGGER.debug(f"{inputs} inputs angemeldet {device.hass_device_entry.id} deviceId {deviceId}")
+    
             return
         
-        """ Bei unbekanntem Gerät -> ModuleId abfragen """
+        # Bei unbekanntem Gerät -> ModuleId abfragen 
         device = self.get_device(object_id)
         if device is None:
           LOGGER.debug(f"got event of unknown device {object_id.getDeviceId()} with data: {data} -> calling getModuleId")
           controller.getModuleId(EIndex.RUNNING)
           return
 
-        """ Tasterevents (dazu gibt es keine Entity """
+        # Tasterevents (dazu gibt es keine Entity
         if isinstance(data, EvCovered):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          buttonName = f"button_{self.extract_final_number(name)}"
           hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got evConvered of {object_id}, name = {name}, buttonName = {buttonName}, hassDeviceId = {hass_device_id}")
+          LOGGER.debug(f"got EvCovered of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
           
           self.hass.loop.call_soon_threadsafe(
              lambda: self.hass.bus.async_fire(
@@ -251,12 +266,93 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                {
                  "device_id": hass_device_id,
                  "type": "button_pressed",
-                 "subtype": buttonName,
+                 "subtype": name,
                }
              )
           )
+          
+        if isinstance(data, EvFree):
+          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
+          hass_device_id = device.hass_device_entry.id
+          LOGGER.debug(f"got EvFree of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
+          
+          self.hass.loop.call_soon_threadsafe(
+             lambda: self.hass.bus.async_fire(
+               "hausbus_button_event",
+               {
+                 "device_id": hass_device_id,
+                 "type": "button_released",
+                 "subtype": name,
+               }
+             )
+          )
+        
+        if isinstance(data, EvHoldStart):
+          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
+          hass_device_id = device.hass_device_entry.id
+          LOGGER.debug(f"got EvHoldStart of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
+          
+          self.hass.loop.call_soon_threadsafe(
+             lambda: self.hass.bus.async_fire(
+               "hausbus_button_event",
+               {
+                 "device_id": hass_device_id,
+                 "type": "button_hold_start",
+                 "subtype": name,
+               }
+             )
+          )
+        
+        if isinstance(data, EvHoldEnd):
+          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
+          hass_device_id = device.hass_device_entry.id
+          LOGGER.debug(f"got EvHoldEnd of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
+          
+          self.hass.loop.call_soon_threadsafe(
+             lambda: self.hass.bus.async_fire(
+               "hausbus_button_event",
+               {
+                 "device_id": hass_device_id,
+                 "type": "button_hold_end",
+                 "subtype": name,
+               }
+             )
+          )
+        
+        if isinstance(data, EvClicked):
+          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
+          hass_device_id = device.hass_device_entry.id
+          LOGGER.debug(f"got EvClicked of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
+          
+          self.hass.loop.call_soon_threadsafe(
+             lambda: self.hass.bus.async_fire(
+               "hausbus_button_event",
+               {
+                 "device_id": hass_device_id,
+                 "type": "button_clicked",
+                 "subtype": name,
+               }
+             )
+          )
+        
+        if isinstance(data, EvDoubleClick):
+          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
+          hass_device_id = device.hass_device_entry.id
+          LOGGER.debug(f"got EvDoubleClick of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
+          
+          self.hass.loop.call_soon_threadsafe(
+             lambda: self.hass.bus.async_fire(
+               "hausbus_button_event",
+               {
+                 "device_id": hass_device_id,
+                 "type": "button_double_clicked",
+                 "subtype": name,
+               }
+             )
+          )
+        
  
-        """ Alles andere wird an die jeweiligen Channel weitergeleitet """        
+        # Alles andere wird an die jeweiligen Channel weitergeleitet      
         channel = self.get_channel(object_id)
         # light event handling
         if isinstance(channel, HausbusLight):
@@ -281,11 +377,11 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         return int(match.group(1))
       return None
 
-    async def async_update_device_registry(self, device: HausbusDevice):
+    async def async_create_device_registry(self, device: HausbusDevice):
       device_registry = async_get_device_registry(self.hass)
       device_entry = device_registry.async_get_or_create(
         config_entry_id=self.config_entry.entry_id,
-        identifiers={(DOMAIN, device.model_id)},
+        identifiers={(DOMAIN, device.device_id)},
         manufacturer="HausBus",
         model=device.model_id,
         name=device.name,

@@ -4,6 +4,9 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 import voluptuous as vol
 from homeassistant.components.device_automation.trigger import DEVICE_TRIGGER_BASE_SCHEMA
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 """ definiert individuelle TriggerEvents z.b. der Taster """
 DOMAIN = "hausbus"
@@ -22,20 +25,15 @@ async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[s
     device_registry = async_get_device_registry(hass)
     device = device_registry.async_get(device_id)
 
+
     if device is None:
         return []
+        
+    inputs = hass.data.get(DOMAIN, {}).get(device_id, {}).get("inputs", 0)
+        
+    LOGGER.debug(f"Device {device_id} hat inputs {inputs}")
 
-    if device.model == "1-fach Taster":
-        BUTTONS = [1]
-    elif device.model == "2-fach Taster":
-        BUTTONS = [1,2]
-    elif device.model == "4-fach Taster":
-        BUTTONS = [1,2,3,4]
-    elif device.model == "6-fach Taster":
-        BUTTONS = [1,2,3,4,5,6]
-    elif device.model == "6-fach Taster Gira":
-        BUTTONS = [1,2,3,4,5,6]
-    else:
+    if not isinstance(inputs, list) or not all(isinstance(i, str) for i in inputs):
       return []
       
     return [
@@ -44,10 +42,10 @@ async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[s
             "domain": DOMAIN,
             "device_id": device_id,
             "type": trigger_type,
-            "subtype": f"button_{btn}",  # z.B. "button_1"
+            "subtype": inputName,  # z.B. "button_1"
         }
         for trigger_type in TRIGGER_TYPES
-        for btn in BUTTONS
+        for inputName in inputs
     ]
 
 async def async_attach_trigger(
