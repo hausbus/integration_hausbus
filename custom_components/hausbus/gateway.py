@@ -26,6 +26,7 @@ from pyhausbus.ObjectId import ObjectId
 
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -41,6 +42,7 @@ from .light import (
     RGBDimmer,
 )
 from .switch import HausbusSwitch, Schalter
+from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import EvCovered
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvFree import EvFree
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvHoldStart import EvHoldStart
@@ -67,6 +69,8 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         self._new_channel_listeners: dict[
             str, Callable[[HausbusEntity], Coroutine[Any, Any, None]]
         ] = {}
+        
+        asyncio.run_coroutine_threadsafe(self.async_delete_devices(), self.hass.loop)
 
     def add_device(self, device_id: str, module: ModuleId) -> None:
         """Add a new Haus-Bus Device to this gateway's device list."""
@@ -81,6 +85,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 module.getName(),
                 module.getFirmwareId(),
             )
+            
         if device_id not in self.channels:
             self.channels[device_id] = {}
 
@@ -170,6 +175,44 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 ).result()
                 switch.get_hardware_status()
 
+    def create_sensor_entity(
+        self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
+    ) -> HausbusSensor | None:
+        """Create a sensor entity according to the type of instance."""
+        if isinstance(instance, Temperatursensor):
+            return HausbusTemperaturSensor(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
+        elif isinstance(instance, Helligkeitssensor):
+            return HausbusHelligkeitsSensor(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )    
+        elif isinstance(instance, Feuchtesensor):
+            return HausbusFeuchteSensor(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )    
+        return None
+
+    def add_sensor_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
+        """Add a new Haus-Bus sensor Channel to this gateway's channel list."""
+
+        device = self.get_device(object_id)
+        if device is not None:
+            sensor = self.create_sensor_entity(device, instance, object_id)
+            channel_list = self.get_channel_list(object_id)
+            if sensor is not None and channel_list is not None:
+                channel_list[self.get_channel_id(object_id)] = sensor
+                asyncio.run_coroutine_threadsafe(
+                    self._new_channel_listeners[SENSOR_DOMAIN](sensor), self.hass.loop
+                ).result()
+                sensor.get_hardware_status()
+                
     def add_channel(self, instance: ABusFeature) -> None:
         """Add a new Haus-Bus Channel to this gateways channel list."""
         object_id = ObjectId(instance.getObjectId())
@@ -179,9 +222,14 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             and self.get_channel_id(object_id) not in channel_list
         ):
             if HausbusLight.is_light_channel(object_id.getClassId()):
-                self.add_light_channel(instance, object_id)
-            if HausbusSwitch.is_switch_channel(object_id.getClassId()):
-                self.add_switch_channel(instance, object_id)
+              LOGGER.debug(f"create light channel for {instance}")
+              self.add_light_channel(instance, object_id)
+            elif HausbusSwitch.is_switch_channel(object_id.getClassId()):
+              LOGGER.debug(f"create switch channel for {instance}")
+              self.add_switch_channel(instance, object_id)
+            elif HausbusSensor.is_sensor_channel(object_id.getClassId()):
+              LOGGER.debug(f"create sensor channel for {instance}")
+              self.add_sensor_channel(instance, object_id)
 
     def busDataReceived(self, busDataMessage: BusDataMessage) -> None:
         """Handle Haus-Bus messages."""
@@ -216,6 +264,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           if device is not None:
             device.set_type(config.getFCKE())
             
+            # Mit der Konfiguration registrieren wir das Device bei HASS
             asyncio.run_coroutine_threadsafe(self.async_create_device_registry(device), self.hass.loop)
                 
             controller.getRemoteObjects()
@@ -356,10 +405,16 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         channel = self.get_channel(object_id)
         # light event handling
         if isinstance(channel, HausbusLight):
+          LOGGER.debug(f" handle_light_event {channel} {data}")
           channel.handle_light_event(data)
         # switch event handling
         elif isinstance(channel, HausbusSwitch):
+          LOGGER.debug(f" handle_switch_event {channel} {data}")
           channel.handle_switch_event(data)
+        # temperatur sensor event handling
+        elif isinstance(channel, (HausbusTemperaturSensor, HausbusHelligkeitsSensor, HausbusFeuchteSensor)):
+          LOGGER.debug(f" handle_sensor_event {channel} {data}")
+          channel.handle_sensor_event(data)
         else:
           LOGGER.debug(f"nicht unterstützter channel type {channel}")
 
@@ -388,3 +443,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
       )
       LOGGER.debug(f"hassEntryId = {device_entry.id}")
       device.setHassDeviceEntry(device_entry)
+
+    async def async_delete_devices(self):
+      device_registry = async_get_device_registry(self.hass)
+      #device_registry.async_remove_device("fc90771cff9ddaaeb2568f20ec2f8711")
