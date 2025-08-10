@@ -27,6 +27,7 @@ from pyhausbus.ObjectId import ObjectId
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
+from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -43,6 +44,8 @@ from .light import (
 )
 from .switch import HausbusSwitch, Schalter
 from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor
+from .binary_sensor import HausbusBinarySensor
+
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import EvCovered
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvFree import EvFree
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvHoldStart import EvHoldStart
@@ -212,6 +215,33 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                     self._new_channel_listeners[SENSOR_DOMAIN](sensor), self.hass.loop
                 ).result()
                 sensor.get_hardware_status()
+
+    def create_binary_sensor_entity(
+        self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
+    ) -> HausbusSensor | None:
+        """Create a binary sensor entity according to the type of instance."""
+        if isinstance(instance, Taster):
+            return HausbusBinarySensor(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
+        
+        return None
+
+    def add_binary_sensor_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
+        """Add a new Haus-Bus binary sensor Channel to this gateway's channel list."""
+
+        device = self.get_device(object_id)
+        if device is not None:
+            binary_sensor = self.create_binary_sensor_entity(device, instance, object_id)
+            channel_list = self.get_channel_list(object_id)
+            if binary_sensor is not None and channel_list is not None:
+                channel_list[self.get_channel_id(object_id)] = binary_sensor
+                asyncio.run_coroutine_threadsafe(
+                    self._new_channel_listeners[BINARY_SENSOR_DOMAIN](binary_sensor), self.hass.loop
+                ).result()
+                binary_sensor.get_hardware_status()
                 
     def add_channel(self, instance: ABusFeature) -> None:
         """Add a new Haus-Bus Channel to this gateways channel list."""
@@ -227,6 +257,9 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             elif HausbusSwitch.is_switch_channel(object_id.getClassId()):
               LOGGER.debug(f"create switch channel for {instance}")
               self.add_switch_channel(instance, object_id)
+            elif HausbusBinarySensor.is_binary_sensor_channel(object_id.getClassId()):
+              LOGGER.debug(f"create binary sensor channel for {instance}")
+              self.add_binary_sensor_channel(instance, object_id)
             elif HausbusSensor.is_sensor_channel(object_id.getClassId()):
               LOGGER.debug(f"create sensor channel for {instance}")
               self.add_sensor_channel(instance, object_id)
@@ -286,7 +319,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               LOGGER.debug(f"name for firmwareId {device.firmware_id}, fcke: {device.fcke}, classId {instanceObjectId.getClassId()}, instanceId {instanceObjectId.getInstanceId()} is {name}")
               instance.setName(name)
               if name is not None:
-                self.add_channel(instance)
+                
+                # Bei Tastern keinen BinaryChannel anlegen, sondern nur bei anderen Eingängen
+                if not name.startswith("Taster"):
+                  self.add_channel(instance)
+                
+                # Bei allen Taster Instanzen die Events anlegen, weil da auch ein Taster angeschlossen sein kann
                 if isinstance(instance, Taster):
                    inputs.append(name)
             
@@ -411,6 +449,10 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         elif isinstance(channel, HausbusSwitch):
           LOGGER.debug(f" handle_switch_event {channel} {data}")
           channel.handle_switch_event(data)
+        # binary sensor event handling
+        elif isinstance(channel, HausbusBinarySensor):
+          LOGGER.debug(f" handle_binary_sensor_event {channel} {data}")
+          channel.handle_binary_sensor_event(data)
         # temperatur sensor event handling
         elif isinstance(channel, (HausbusTemperaturSensor, HausbusHelligkeitsSensor, HausbusFeuchteSensor)):
           LOGGER.debug(f" handle_sensor_event {channel} {data}")
