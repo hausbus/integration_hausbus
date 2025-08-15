@@ -1,0 +1,249 @@
+#DIMMER services
+dimmer_set_brightness:
+  name: Turn dimmer on with additional parameters
+  description: Allows to turn an dimmer on with a given duration
+  target:
+    entity:
+      domain: light
+  fields:
+    brightness:
+      name: Brightness
+      description: Brightness in percent (0-100)
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+    duration:
+      name: Duration
+      description: On duration in seconds
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 65535
+          unit_of_measurement: "s"
+
+dimmer_start_ramp:
+  target:
+    entity:
+      domain: light
+  name: Start dimming ramp into given direction
+  description: Starts a ramp of a dimmer in give direction or toggle to opposite direction than last turn
+  fields:
+    direction:
+      name: Ramp direction
+      description: Direction of dimmer ramp ("up","down","toggle")
+      required: true
+      default: "up"
+      example: "up"
+      selector:
+        select:
+          options:
+            - "up"
+            - "down"
+            - "toggle"
+
+dimmer_stop_ramp:
+  target:
+    entity:
+      domain: light
+
+  name: Stop active dimming ramp
+  description: Stops a ramp of a dimmer that was started with dimmer_start_ramp
+
+#RGB services
+rgb_set_color:
+  name: Turns on given color with additional parameters
+  description: Allows to turn an rgb light on with a given color and duration
+  target:
+    entity:
+      domain: light
+  fields:
+    brightnessRed:
+      name: Brightness red
+      description: Brightness for color red in percent (0-100)
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+    brightnessGreen:
+      name: Brightness green
+      description: Brightness for color green in percent (0-100)
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider          
+    brightnessBlue:
+      name: Brightness blue
+      description: Brightness for color blue in percent (0-100)
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider           
+    duration:
+      name: Duration
+      description: On duration in seconds
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 65535
+          unit_of_measurement: "s"
+
+#LED services
+led_off:
+  name: Turn led off with additional parameters
+  description: Allows to turn a led off with a given on delay
+  target:
+    entity:
+      domain: light
+  fields:
+    offDelay:
+      name: OffDelay
+      description: delay in seconds before switching off
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 65535
+          unit_of_measurement: "s"    
+      
+led_on:
+  name: Switch LED on with additional parameters
+  description: Allows to switch an LED on with duration and switch on delay
+  target:
+    entity:
+      domain: light
+  fields:
+    brightness:
+      name: Brightness
+      description: Brightness in percent (0-100)
+      required: true
+      default: 100
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+    duration:
+      name: Duration
+      description: Switch on duration in seconds
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 65535
+          unit_of_measurement: "s"
+    onDelay:
+      name: OnDelay
+      description: delay in seconds before switching on
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 65535
+          unit_of_measurement: "s"
+
+led_blink:
+  name: Lets a led blink with additional parameters
+  description: Allows to led an LED blink with blink pattern and quantity
+  target:
+    entity:
+      domain: light
+  fields:
+    brightness:
+      name: Brightness
+      description: Brightness in percent (0-100)
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+    offTime:
+      name: OffTime
+      description: offTime of blink pattern
+      required: true
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 20
+          unit_of_measurement: "s"
+    onTime:
+      name: OnTime
+      description: onTime of blink pattern
+      required: true
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 20
+          unit_of_measurement: "s"
+    quantity:
+      name: Quantity
+      description: number of blink rounds
+      required: false
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 65535
+
+led_set_min_brightness:
+  name: Sets a minimum remaining brightness for a led
+  description: Sets a minimum brightness for a led that also remains if the led is switched up
+  target:
+    entity:
+      domain: light
+  fields:
+    minBrightness:
+      name: MinBrightness
+      description: minBrightness in percent (0-100)
+      required: true
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider

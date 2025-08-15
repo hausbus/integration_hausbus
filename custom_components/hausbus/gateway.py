@@ -43,7 +43,7 @@ from .light import (
     RGBDimmer,
 )
 from .switch import HausbusSwitch, Schalter
-from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor
+from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor, HausbusAnalogEingang, AnalogEingang
 from .binary_sensor import HausbusBinarySensor
 
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import EvCovered
@@ -200,6 +200,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 device,
                 instance,
             )    
+        elif isinstance(instance, AnalogEingang):
+            return HausbusAnalogEingang(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )    
         return None
 
     def add_sensor_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
@@ -275,7 +281,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         if deviceId == HOMESERVER_DEVICE_ID or deviceId == 9999 or deviceId == 12222:
             return
 
-        if deviceId in [110, 503, 1000,1541,3422,4000,4001,4002,4003,4004,4005,4009,4096,5068,8192,8270,11581,12223,12622,13976,14896,18343,19075,20043,21336,22784,22909,24261,25661,25874,28900,29725,3423,4006,4008]:
+        if deviceId in [110, 503, 1000,1541,3422,4000,4001,4002,4003,4004,4005,4009,4096,5068,8192,8270,11581,12223,12622,13976,14896,18343,19075,20043,21336,22909,24261,25661,25874,28900,29725,3423,4006,4008]:
             return
 
         LOGGER.debug(f"busDataReceived with data = {data}")
@@ -289,6 +295,13 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           controller.getConfiguration()
           return
         
+        # Bei unbekanntem Gerät -> ModuleId abfragen 
+        device = self.get_device(object_id)
+        if device is None:
+          LOGGER.debug(f"got event of unknown device {object_id.getDeviceId()} with data: {data} -> calling getModuleId")
+          controller.getModuleId(EIndex.RUNNING)
+          return
+
         # Bei Configuration -> getRemoteObjects 
         if isinstance(data, Configuration):
           LOGGER.debug(f"got configuration of {object_id.getDeviceId()} with data: {data}")
@@ -317,6 +330,10 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               instanceObjectId = ObjectId(instance.getObjectId())
               name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, instanceObjectId.getClassId(), instanceObjectId.getInstanceId())
               LOGGER.debug(f"name for firmwareId {device.firmware_id}, fcke: {device.fcke}, classId {instanceObjectId.getClassId()}, instanceId {instanceObjectId.getInstanceId()} is {name}")
+              
+              if deviceId == 22784:
+                name = f"Object {instance.getObjectId()}"
+              
               instance.setName(name)
               if name is not None:
                 
@@ -333,13 +350,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             LOGGER.debug(f"{inputs} inputs angemeldet {device.hass_device_entry.id} deviceId {deviceId}")
     
             return
-        
-        # Bei unbekanntem Gerät -> ModuleId abfragen 
-        device = self.get_device(object_id)
-        if device is None:
-          LOGGER.debug(f"got event of unknown device {object_id.getDeviceId()} with data: {data} -> calling getModuleId")
-          controller.getModuleId(EIndex.RUNNING)
-          return
 
         # Tasterevents (dazu gibt es keine Entity
         if isinstance(data, EvCovered):
@@ -375,6 +385,8 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           )
         
         if isinstance(data, EvHoldStart):
+          entity = self.hass.data["entity_components"]["light"].get_entity("light.6_fach_taster_5242_led_1")
+          LOGGER.debug(f"entity = {entity.platform.platform_name}")
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
           hass_device_id = device.hass_device_entry.id
           LOGGER.debug(f"got EvHoldStart of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
@@ -454,7 +466,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           LOGGER.debug(f" handle_binary_sensor_event {channel} {data}")
           channel.handle_binary_sensor_event(data)
         # temperatur sensor event handling
-        elif isinstance(channel, (HausbusTemperaturSensor, HausbusHelligkeitsSensor, HausbusFeuchteSensor)):
+        elif isinstance(channel, (HausbusTemperaturSensor, HausbusHelligkeitsSensor, HausbusFeuchteSensor, HausbusAnalogEingang)):
           LOGGER.debug(f" handle_sensor_event {channel} {data}")
           channel.handle_sensor_event(data)
         else:
@@ -481,7 +493,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         identifiers={(DOMAIN, device.device_id)},
         manufacturer="HausBus",
         model=device.model_id,
-        name=device.name,
+        name=device.name
       )
       LOGGER.debug(f"hassEntryId = {device_entry.id}")
       device.setHassDeviceEntry(device_entry)

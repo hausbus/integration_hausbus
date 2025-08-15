@@ -15,6 +15,8 @@ from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.EvOn import EvOn as Di
 from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.Status import (
     Status as DimmerStatus,
 )
+from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.params.EDirection import EDirection
+
 from pyhausbus.de.hausbus.homeassistant.proxy.Led import Led
 from pyhausbus.de.hausbus.homeassistant.proxy.led.data.EvOff import EvOff as ledEvOff
 from pyhausbus.de.hausbus.homeassistant.proxy.led.data.EvOn import EvOn as ledEvOn
@@ -38,6 +40,8 @@ from homeassistant.components.light import (
     ColorMode,
     LightEntity,
 )
+import voluptuous as vol
+from homeassistant.helpers import entity_platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -45,9 +49,12 @@ from .const import ATTR_ON_STATE
 from .device import HausbusDevice
 from .entity import HausbusEntity
 
+import logging
+LOGGER = logging.getLogger(__name__)
+
+
 if TYPE_CHECKING:
     from . import HausbusConfigEntry
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -57,13 +64,89 @@ async def async_setup_entry(
     """Set up the Haus-Bus lights from a config entry."""
     gateway = config_entry.runtime_data.gateway
 
+    # Services gelten für alle HausbusLight-Entities, die die jeweilige Funktion implementieren
+    platform = entity_platform.async_get_current_platform()
+    
+    
+    # Dimmer Services
+    platform.async_register_entity_service(
+        "dimmer_set_brightness",
+        {
+            vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        },
+        "async_dimmer_set_brightness",
+    )
+    platform.async_register_entity_service(
+        "dimmer_start_ramp",
+        {
+            vol.Required("direction"): vol.In(["up", "down", "toggle"])
+        },
+        "async_dimmer_start_ramp",
+    )
+    platform.async_register_entity_service(
+        "dimmer_stop_ramp",
+        {},
+        "async_dimmer_stop_ramp",
+    )
+    
+    # RGB Services
+    platform.async_register_entity_service(
+        "rgb_set_color",
+        {
+            vol.Required("brightnessRed"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightnessGreen"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightnessBlue"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        },
+        "async_rgb_set_color",
+    )
+    
+    
+    # LED Services
+    platform.async_register_entity_service(
+        "led_off",
+        {
+            vol.Optional("offDelay", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        },
+        "async_led_off",
+    )
+    platform.async_register_entity_service(
+        "led_on",
+        {
+            vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+            vol.Optional("onDelay", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        },
+        "async_led_on",
+    )
+    platform.async_register_entity_service(
+        "led_blink",
+        {
+            vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("offTime"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+            vol.Required("onTime"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+            vol.Optional("quantity", default=0): vol.All(vol.Coerce(int), vol.Range(min=0)),
+        },
+        "async_led_blink",
+    )
+    platform.async_register_entity_service(
+        "led_set_min_brightness",
+        {
+            vol.Required("minBrightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        },
+        "async_led_set_min_brightness",
+    )
+    
     async def async_add_light(channel: HausbusEntity) -> None:
         """Add light from Haus-Bus."""
+        
         if isinstance(channel, HausbusLight):
             async_add_entities([channel])
 
+    # Registriere Callback für neue Light-Entities
     gateway.register_platform_add_channel_callback(async_add_light, LIGHT_DOMAIN)
-
+        
 
 class HausbusLight(HausbusEntity, LightEntity):
     """Representation of a Haus-Bus light."""
@@ -80,6 +163,7 @@ class HausbusLight(HausbusEntity, LightEntity):
         self._attr_is_on = False
         self._attr_brightness = 255
         self._attr_hs_color = (0, 0)
+   
 
     @staticmethod
     def is_light_channel(class_id: int) -> bool:
@@ -142,7 +226,6 @@ class HausbusLight(HausbusEntity, LightEntity):
         if state_changed:
             self.schedule_update_ha_state()
 
-
 class HausbusDimmerLight(HausbusLight):
     """Representation of a Haus-Bus dimmer."""
 
@@ -185,7 +268,26 @@ class HausbusDimmerLight(HausbusLight):
             else:
                 self.light_turn_off()
 
+    async def async_dimmer_set_brightness(self, brightness: int, duration:int):
+        """Setzt eine Helligkeit mit einer Dauer."""
+        LOGGER.debug(f"async_dimmer_set_brightness brightness {brightness}, duration {duration}")
+        self._channel.setBrightness(brightness, duration)
 
+    async def async_dimmer_start_ramp(self, direction: str):
+        """Starte eine Dimmrampe hoch, runter oder entgegengesetzt der letzten Richtung."""
+        LOGGER.debug(f"async_dimmer_start_ramp direction {direction}")
+        if direction=="up":
+          self._channel.start(EDirection.TO_LIGHT)
+        elif direction=="down":
+          self._channel.start(EDirection.TO_DARK)
+        elif direction=="toggle":
+          self._channel.start(EDirection.TOGGLE)
+
+    async def async_dimmer_stop_ramp(self):
+        """Stoppt eine aktive Dimmrampe."""
+        LOGGER.debug(f"async_dimmer_stop_ramp")
+        self._channel.stop()
+            
 class HausbusRGBDimmerLight(HausbusLight):
     """Representation of a Haus-Bus RGB dimmer."""
 
@@ -243,7 +345,12 @@ class HausbusRGBDimmerLight(HausbusLight):
             else:
                 self.light_turn_off()
 
+        async def async_rgb_set_color(self, brightnessRed: int, brightnessGreen: int, brightnessBlue: int, duration: int):
+          """Schaltet ein RGB Licht mit einer Dauer ein."""
+          LOGGER.debug(f"async_rgb_set_color brightnessRed {brightnessRed}, brightnessGreen {brightnessGreen}, brightnessBlue {brightnessBlue}, duration {duration}")
+          self._channel.setColor(brightnessRed, brightnessGreen, brightnessBlue, duration)
 
+          
 class HausbusLedLight(HausbusLight):
     """Representation of a Haus-Bus LED."""
 
@@ -285,3 +392,24 @@ class HausbusLedLight(HausbusLight):
                 self.set_light_brightness(data.getBrightness())
             else:
                 self.light_turn_off()
+
+    # SERVICES
+    async def async_led_off(self, offDelay: int):
+        """Schaltet eine LED mit Ausschaltverzögerung aus."""
+        LOGGER.debug(f"async_led_off offDelay {offDelay}")
+        self._channel.off(offDelay)
+
+    async def async_led_on(self, brightness: int, duration: int, onDelay: int):
+        """Schaltet eine LED mit Einschaltverzögerung ein."""
+        LOGGER.debug(f"async_led_on brightness {brightness}, duration {duration}, onDelay {onDelay}")
+        self._channel.on(brightness, duration, onDelay)
+
+    async def async_led_blink(self, brightness: int, offTime: int, onTime: int, quantity: int):
+        """Lässt eine LED blinken."""
+        LOGGER.debug(f"async_led_blink brightness {brightness} offTime {offTime} onTime {onTime} quantity {quantity}")
+        self._channel.blink(brightness, offTime, onTime, quantity)
+
+    async def async_led_set_min_brightness(self, minBrightness: int):
+        """Setzt eine Mindesthelligkeit, die auch dann erhalten bleibt, wenn die LED per off ausgeschaltet wird."""
+        LOGGER.debug(f"async_led_min_brightness minBrightness {minBrightness}")
+        self._channel.setMinBrightness(minBrightness)

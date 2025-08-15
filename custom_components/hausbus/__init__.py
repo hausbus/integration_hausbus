@@ -34,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
     gateway = HausbusGateway(hass, entry)
     entry.runtime_data = HausbusConfig(gateway)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
 
     _LOGGER.debug("start searching devices")
 

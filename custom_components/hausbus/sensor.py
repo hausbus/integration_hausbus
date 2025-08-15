@@ -29,6 +29,14 @@ from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.Status import (
     Status as FeuchtesensorStatus,
 )
 
+from pyhausbus.de.hausbus.homeassistant.proxy.AnalogEingang import AnalogEingang
+from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.EvStatus import (
+    EvStatus as AnalogEingangEvStatus,
+)
+from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Status import (
+    Status as AnalogEingangStatus,
+)
+
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN, SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -80,7 +88,7 @@ class HausbusSensor(HausbusEntity, SensorEntity):
     @staticmethod
     def is_sensor_channel(class_id: int) -> bool:
         """Check if a class_id is a sensor."""
-        return class_id in (Temperatursensor.CLASS_ID, Helligkeitssensor.CLASS_ID, Feuchtesensor.CLASS_ID)
+        return class_id in (Temperatursensor.CLASS_ID, Helligkeitssensor.CLASS_ID, Feuchtesensor.CLASS_ID, AnalogEingang.CLASS_ID)
 
     def get_hardware_status(self) -> None:
         """Request status of a sensor channel from hardware."""
@@ -160,5 +168,30 @@ class HausbusFeuchteSensor(HausbusSensor):
         if isinstance(data, (FeuchtesensorEvStatus, FeuchtesensorStatus)):
           value = float(data.getRelativeHumidity()) + float(data.getCentiHumidity()) / 100
           _LOGGER.debug(f"Feuchtigkeit empfangen: {value} %")
+          self._attr_native_value = value
+          self.schedule_update_ha_state() 
+
+class HausbusAnalogEingang(HausbusSensor):
+    """Representation of a Haus-Bus analog input."""
+
+    def __init__(
+        self,
+        instance_id: int,
+        device: HausbusDevice,
+        channel: AnalogEingang,
+    ) -> None:
+        """Set up sensor."""
+        super().__init__(instance_id, device, channel)
+
+        self._attr_native_unit_of_measurement = None
+        self._attr_device_class = None
+        self._attr_native_value = None
+
+    def handle_sensor_event(self, data: Any) -> None:
+        """Handle AnalogEingang events from Haus-Bus."""
+        
+        if isinstance(data, (AnalogEingangEvStatus, AnalogEingangStatus)):
+          value = data.getValue()
+          _LOGGER.debug(f"Analogwert empfangen: {value}")
           self._attr_native_value = value
           self.schedule_update_ha_state() 

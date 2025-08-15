@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 """ definiert individuelle TriggerEvents z.b. der Taster """
 DOMAIN = "hausbus"
 
-TRIGGER_TYPES = {"button_pressed", "button_released", "button_clicked", "button_double_clicked", "button_hold_start", "button_hold_end"}
+TRIGGER_TYPES = ["button_pressed", "button_released", "button_clicked", "button_double_clicked", "button_hold_start", "button_hold_end"]
 
 TRIGGER_SCHEMA = DEVICE_TRIGGER_BASE_SCHEMA.extend(
     {
