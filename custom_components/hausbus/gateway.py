@@ -31,7 +31,6 @@ from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.core import callback
 
 from .device import HausbusDevice
 from .entity import HausbusEntity
@@ -360,107 +359,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             self.hass.data.setdefault(DOMAIN, {})
             self.hass.data[DOMAIN][device.hass_device_entry.id] = {"inputs": inputs}
             LOGGER.debug(f"{inputs} inputs angemeldet {device.hass_device_entry.id} deviceId {deviceId}")
-    
             return
-
-        # Tasterevents (dazu gibt es keine Entity)
-        if isinstance(data, EvCovered):
-          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got EvCovered of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
-          
-          self.hass.loop.call_soon_threadsafe(
-             lambda: self.hass.bus.async_fire(
-               "hausbus_button_event",
-               {
-                 "device_id": hass_device_id,
-                 "type": "button_pressed",
-                 "subtype": name,
-               }
-             )
-          )
-          
-        if isinstance(data, EvFree):
-          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got EvFree of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
-          
-          self.hass.loop.call_soon_threadsafe(
-             lambda: self.hass.bus.async_fire(
-               "hausbus_button_event",
-               {
-                 "device_id": hass_device_id,
-                 "type": "button_released",
-                 "subtype": name,
-               }
-             )
-          )
         
-        if isinstance(data, EvHoldStart):
-          entity = self.hass.data["entity_components"]["light"].get_entity("light.6_fach_taster_5242_led_1")
-          LOGGER.debug(f"entity = {entity.platform.platform_name}")
+        # https://developers.home-assistant.io/docs/core/entity/event/
+        if isinstance(data, (EvCovered,EvFree,EvHoldStart,EvHoldEnd,EvClicked,EvDoubleClick)):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got EvHoldStart of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
-          
-          self.hass.loop.call_soon_threadsafe(
-             lambda: self.hass.bus.async_fire(
-               "hausbus_button_event",
-               {
-                 "device_id": hass_device_id,
-                 "type": "button_hold_start",
-                 "subtype": name,
-               }
-             )
-          )
-        
-        if isinstance(data, EvHoldEnd):
-          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got EvHoldEnd of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
-          
-          self.hass.loop.call_soon_threadsafe(
-             lambda: self.hass.bus.async_fire(
-               "hausbus_button_event",
-               {
-                 "device_id": hass_device_id,
-                 "type": "button_hold_end",
-                 "subtype": name,
-               }
-             )
-          )
-        
-        if isinstance(data, EvClicked):
-          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got EvClicked of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
-          
-          self.hass.loop.call_soon_threadsafe(
-             lambda: self.hass.bus.async_fire(
-               "hausbus_button_event",
-               {
-                 "device_id": hass_device_id,
-                 "type": "button_clicked",
-                 "subtype": name,
-               }
-             )
-          )
-        
-        if isinstance(data, EvDoubleClick):
-          name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
-          hass_device_id = device.hass_device_entry.id
-          LOGGER.debug(f"got EvDoubleClick of {object_id}, name = {name}, hassDeviceId = {hass_device_id}")
-          
-          self.hass.loop.call_soon_threadsafe(
-             lambda: self.hass.bus.async_fire(
-               "hausbus_button_event",
-               {
-                 "device_id": hass_device_id,
-                 "type": "button_double_clicked",
-                 "subtype": name,
-               }
-             )
-          )
+          self.generate_device_trigger(data, device.hass_device_entry.id, name)
         
  
         # Alles andere wird an die jeweiligen Channel weitergeleitet      
@@ -485,6 +389,27 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         else:
           LOGGER.debug(f"nicht unterstützter channel type {channel}")
 
+    def generate_device_trigger(self, data, hass_device_id, name):
+        eventType = {
+              EvCovered: "button_pressed",
+              EvFree: "button_released",
+              EvHoldStart: "button_hold_start",
+              EvHoldEnd: "button_hold_end",
+              EvClicked: "button_clicked",
+              EvDoubleClick: "button_double_clicked",
+            }.get(type(data), "unknown")
+
+        LOGGER.debug(f"sending trigger {eventType} name {name} hass_device_id {hass_device_id}")
+        self.hass.loop.call_soon_threadsafe(
+          lambda: self.hass.bus.async_fire(
+            "hausbus_button_event",
+            {
+              "device_id": hass_device_id,
+              "type": eventType,
+              "subtype": name,
+            }
+          )
+        )
 
     def register_platform_add_channel_callback(
         self,
