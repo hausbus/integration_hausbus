@@ -4,6 +4,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 import voluptuous as vol
 from homeassistant.components.device_automation.trigger import DEVICE_TRIGGER_BASE_SCHEMA
+from homeassistant.exceptions import HomeAssistantError
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ async def async_validate_trigger_config(hass: HomeAssistant, config: ConfigType)
     try:
         return TRIGGER_SCHEMA(config)
     except vol.Invalid as err:
-        raise TriggerConfigError(err) from err
+        raise HomeAssistantError(f"Invalid trigger config: {err}") from err
 
 async def async_attach_trigger(
     hass: HomeAssistant,
@@ -76,6 +77,7 @@ async def async_attach_trigger(
             "domain": DOMAIN,
             "device_id": config["device_id"],
             "type": config["type"],
+            "subtype": config["subtype"],
         })
 
     return hass.bus.async_listen(event_type, handle_event)

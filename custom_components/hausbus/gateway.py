@@ -363,12 +363,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
     
             return
 
-        entity_id=""
-        channel = self.get_channel(object_id)
-        if channel is not None:
-            entity_id = channel.entity_id
-        LOGGER.debug(f"entity_id =  {entity_id}")
-        
         # Tasterevents (dazu gibt es keine Entity)
         if isinstance(data, EvCovered):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
@@ -382,7 +376,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_pressed",
                  "subtype": name,
-                 "entity_id": entity_id,
                }
              )
           )
@@ -399,7 +392,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_released",
                  "subtype": name,
-                 "entity_id": entity_id,
                }
              )
           )
@@ -418,7 +410,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_hold_start",
                  "subtype": name,
-                 "entity_id": entity_id,
                }
              )
           )
@@ -435,7 +426,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_hold_end",
                  "subtype": name,
-                 "entity_id": entity_id,
                }
              )
           )
@@ -452,7 +442,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_clicked",
                  "subtype": name,
-                 "entity_id": entity_id,
                }
              )
           )
@@ -469,13 +458,14 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_double_clicked",
                  "subtype": name,
-                 "entity_id": entity_id,
                }
              )
           )
         
  
         # Alles andere wird an die jeweiligen Channel weitergeleitet      
+        channel = self.get_channel(object_id)
+        
         # light event handling
         if isinstance(channel, HausbusLight):
           LOGGER.debug(f" handle_light_event {channel} {data}")
