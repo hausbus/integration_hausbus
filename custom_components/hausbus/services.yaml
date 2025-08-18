@@ -91,8 +91,8 @@ dimmer_set_configuration:
       name: Time for ramps
       description: Time (a 50ms) to fade from 0% to 100% brightness when starting a dimming ramp with command start_ramp. Possible time 50ms to 10s.
       required: true
-      default: 12
-      example: 12
+      default: 60
+      example: 60
       selector:
         number:
           min: 1
@@ -179,6 +179,24 @@ rgb_set_color:
           max: 65535
           unit_of_measurement: "s"
 
+rgb_set_configuration:
+  target:
+    entity:
+      domain: light
+  name: Configure a rgb channel
+  description: Set all possible configuration values for a rgb channel
+  fields:
+    dimming_time:
+      name: Time for dimming
+      description: Time (a 50ms) to fade from 0% to 100% brightness when selecting a new brightness with command set_brightness. Possible time 50ms to 10s.
+      required: true
+      default: 12
+      example: 12
+      selector:
+        number:
+          min: 1
+          max: 255
+          
 #LED services
 led_off:
   name: Turn led off with additional parameters
@@ -269,8 +287,7 @@ led_blink:
       selector:
         number:
           min: 0
-          max: 20
-          unit_of_measurement: "s"
+          max: 255
     onTime:
       name: OnTime
       description: onTime of blink pattern
@@ -280,8 +297,7 @@ led_blink:
       selector:
         number:
           min: 0
-          max: 20
-          unit_of_measurement: "s"
+          max: 255
     quantity:
       name: Quantity
       description: number of blink rounds
@@ -328,7 +344,7 @@ led_set_configuration:
       example: 1000
       selector:
         number:
-          min: 0
-          max: 1000
+          min: 1
+          max: 65535
           mode: slider
           

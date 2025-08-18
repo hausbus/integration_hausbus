@@ -86,7 +86,7 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "dimmer_set_brightness",
         {
-            vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightness", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
             vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
         },
         "async_dimmer_set_brightness",
@@ -94,7 +94,7 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "dimmer_start_ramp",
         {
-            vol.Required("direction"): vol.In(["up", "down", "toggle"])
+            vol.Required("direction", default="up"): vol.In(["up", "down", "toggle"])
         },
         "async_dimmer_start_ramp",
     )
@@ -106,11 +106,11 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "dimmer_set_configuration",
         {
-            vol.Required("mode"): vol.In(["dimm_trailing_edge", "dimm_leading_edge", "switch_only"]),
-            vol.Required("dimming_time"): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
-            vol.Required("ramp_time"): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
-            vol.Required("dimming_start_brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Optional("dimming_end_brightness", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("mode", default="dimm_trailing_edge"): vol.In(["dimm_trailing_edge", "dimm_leading_edge", "switch_only"]),
+            vol.Required("dimming_time", default=12): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Required("ramp_time", default=60): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Required("dimming_start_brightness", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Optional("dimming_end_brightness", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         },
         "async_dimmer_set_configuration",
     )
@@ -119,12 +119,19 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "rgb_set_color",
         {
-            vol.Required("brightnessRed"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("brightnessGreen"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("brightnessBlue"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightnessRed", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightnessGreen", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightnessBlue", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
             vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
         },
         "async_rgb_set_color",
+    )
+    platform.async_register_entity_service(
+        "rgb_set_configuration",
+        {
+            vol.Required("dimming_time", default=12): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+        },
+        "async_rgb_set_configuration",
     )
 
     # LED Services
@@ -138,7 +145,7 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "led_on",
         {
-            vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightness", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
             vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
             vol.Optional("onDelay", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
         },
@@ -147,9 +154,9 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "led_blink",
         {
-            vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("offTime"): vol.All(vol.Coerce(int), vol.Range(min=1)),
-            vol.Required("onTime"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+            vol.Required("brightness", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("offTime", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Required("onTime", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
             vol.Optional("quantity", default=0): vol.All(vol.Coerce(int), vol.Range(min=0)),
         },
         "async_led_blink",
@@ -157,27 +164,25 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "led_set_min_brightness",
         {
-            vol.Required("minBrightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("minBrightness", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         },
         "async_led_set_min_brightness",
     )
     platform.async_register_entity_service(
         "led_set_configuration",
         {
-            vol.Required("dimm_offset"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("min_brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("time_base"): vol.All(vol.Coerce(int), vol.Range(min=1, max=1000)),
+            vol.Required("time_base", default=1000): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
         },
         "async_led_set_configuration",
     )
 
+    # Registriere Callback für neue Light-Entities
     async def async_add_light(channel: HausbusEntity) -> None:
         """Add light from Haus-Bus."""
 
         if isinstance(channel, HausbusLight):
             async_add_entities([channel])
 
-    # Registriere Callback für neue Light-Entities
     gateway.register_platform_add_channel_callback(async_add_light, LIGHT_DOMAIN)
 
 
@@ -352,7 +357,6 @@ class HausbusDimmerLight(HausbusLight):
            "dim_leading_edge": DimmerMode.DIMM_L,
            "switch_only": DimmerMode.SWITCH,
         }.get(mode, DimmerMode.SWITCH)
-
         self._channel.setConfiguration(hbDimmerMode, dimming_time, ramp_time, dimming_start_brightness, dimming_end_brightness)
 
 
@@ -399,7 +403,7 @@ class HausbusRGBDimmerLight(HausbusLight):
                 data.getBrightnessGreen(),
                 data.getBrightnessBlue(),
             )
-        if isinstance(data, rgbDimmerStatus):
+        elif isinstance(data, rgbDimmerStatus):
             if (
                 data.getBrightnessBlue() > 0
                 or data.getBrightnessGreen() > 0
@@ -412,11 +416,23 @@ class HausbusRGBDimmerLight(HausbusLight):
                 )
             else:
                 self.light_turn_off()
+        elif isinstance(data, rGBConfiguration):
+            self._configuration = data
 
-        async def async_rgb_set_color(self, brightnessRed: int, brightnessGreen: int, brightnessBlue: int, duration: int):
-          """Schaltet ein RGB Licht mit einer Dauer ein."""
-          LOGGER.debug(f"async_rgb_set_color brightnessRed {brightnessRed}, brightnessGreen {brightnessGreen}, brightnessBlue {brightnessBlue}, duration {duration}")
-          self._channel.setColor(brightnessRed, brightnessGreen, brightnessBlue, duration)
+            self._extra_state_attributes = {}
+            self._extra_state_attributes["dimming_time"] = data.getFadingTime()
+            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+
+    async def async_rgb_set_color(self, brightnessRed: int, brightnessGreen: int, brightnessBlue: int, duration: int):
+      """Schaltet ein RGB Licht mit einer Dauer ein."""
+      LOGGER.debug(f"async_rgb_set_color brightnessRed {brightnessRed}, brightnessGreen {brightnessGreen}, brightnessBlue {brightnessBlue}, duration {duration}")
+      self._channel.setColor(brightnessRed, brightnessGreen, brightnessBlue, duration)
+
+    @callback
+    async def async_rgb_set_configuration(self, dimming_time:int):
+        """Setzt die Konfiguration eines RGB Dimmers."""
+        LOGGER.debug(f"async_rgb_set_configuration dimming_time {dimming_time}")
+        self._channel.setConfiguration(dimming_time)
 
 
 class HausbusLedLight(HausbusLight):
@@ -465,8 +481,8 @@ class HausbusLedLight(HausbusLight):
         elif isinstance(data, LedConfiguration):
             self._configuration = data
             self._extra_state_attributes = {}
-            self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
-            self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
+            #self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
+            #self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
             self._extra_state_attributes["time_base"] = data.getTimeBase()
 
     # SERVICES
