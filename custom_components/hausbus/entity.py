@@ -6,11 +6,12 @@ from typing import Any
 
 from homeassistant.core import callback
 
-# from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 
 from .device import HausbusDevice
 
+import logging
+LOGGER = logging.getLogger(__name__)
 
 class HausbusEntity(Entity):
     """Common base for HausBus Entities."""
@@ -30,8 +31,19 @@ class HausbusEntity(Entity):
         self._attr_device_info = self._device.device_info
         self._attr_translation_key = self._type
         self._attr_name = channel_name
+        self._extra_state_attributes = {}
+        self._configuration = {}
+
+    @property
+    def extra_state_attributes(self):
+      #LOGGER.debug(f"extra_state_attributes {self._extra_state_attributes}")
+      return self._extra_state_attributes
 
     @callback
     def async_update_callback(self, **kwargs: Any) -> None:
         """State push update."""
         raise NotImplementedError
+      
+    async def async_added_to_hass(self):
+      """Called when entity is added to HA."""
+

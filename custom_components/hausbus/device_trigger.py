@@ -29,7 +29,7 @@ async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[s
     if device is None:
         return []
         
-    inputs = hass.data.get(DOMAIN, {}).get(device_id, {}).get("inputs", 0)
+    inputs = hass.data.get(DOMAIN, {}).get(device_id, {}).get("inputs", [])
         
     LOGGER.debug(f"Device {device_id} hat inputs {inputs}")
 
@@ -42,11 +42,18 @@ async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[s
             "domain": DOMAIN,
             "device_id": device_id,
             "type": trigger_type,
-            "subtype": inputName,  # z.B. "button_1"
+            "subtype": input_name,  # z.B. "button_1"
         }
         for trigger_type in TRIGGER_TYPES
-        for inputName in inputs
+        for input_name in inputs
     ]
+
+async def async_validate_trigger_config(hass: HomeAssistant, config: ConfigType) -> ConfigType:
+    """Validiert das Trigger-Schema für hausbus."""
+    try:
+        return TRIGGER_SCHEMA(config)
+    except vol.Invalid as err:
+        raise TriggerConfigError(err) from err
 
 async def async_attach_trigger(
     hass: HomeAssistant,
@@ -61,6 +68,8 @@ async def async_attach_trigger(
         if event.data.get("device_id") != config["device_id"]:
             return
         if event.data.get("type") != config["type"]:
+            return
+        if event.data.get("subtype") != config["subtype"]:
             return
         await action({
             "platform": "device",

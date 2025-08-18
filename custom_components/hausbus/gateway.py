@@ -27,9 +27,11 @@ from pyhausbus.ObjectId import ObjectId
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
+#from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 
 from .device import HausbusDevice
 from .entity import HausbusEntity
@@ -43,6 +45,7 @@ from .light import (
     RGBDimmer,
 )
 from .switch import HausbusSwitch, Schalter
+#from .number import HausBusNumber
 from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor, HausbusAnalogEingang, AnalogEingang
 from .binary_sensor import HausbusBinarySensor
 
@@ -72,6 +75,9 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         self._new_channel_listeners: dict[
             str, Callable[[HausbusEntity], Coroutine[Any, Any, None]]
         ] = {}
+        
+        # Listener f�r state_changed registrieren
+        #self.hass.bus.async_listen("state_changed", self._state_changed_listener)
         
         asyncio.run_coroutine_threadsafe(self.async_delete_devices(), self.hass.loop)
 
@@ -151,6 +157,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                     self._new_channel_listeners[LIGHT_DOMAIN](light), self.hass.loop
                 ).result()
                 light.get_hardware_status()
+                
+                #if isinstance(light, HausbusDimmerLight):
+                #  LOGGER.debug(f"registering numberEntity {light._configTest} for light {light}")
+                #  asyncio.run_coroutine_threadsafe(
+                #    self._new_channel_listeners[NUMBER_DOMAIN](light._configTest), self.hass.loop
+                #  ).result()
 
     def create_switch_entity(
         self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
@@ -343,7 +355,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 
                 # Bei allen Taster Instanzen die Events anlegen, weil da auch ein Taster angeschlossen sein kann
                 if isinstance(instance, Taster):
-                   inputs.append(name)
+                  inputs.append(name)
             
             self.hass.data.setdefault(DOMAIN, {})
             self.hass.data[DOMAIN][device.hass_device_entry.id] = {"inputs": inputs}
@@ -351,7 +363,13 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
     
             return
 
-        # Tasterevents (dazu gibt es keine Entity
+        entity_id=""
+        channel = self.get_channel(object_id)
+        if channel is not None:
+            entity_id = channel.entity_id
+        LOGGER.debug(f"entity_id =  {entity_id}")
+        
+        # Tasterevents (dazu gibt es keine Entity)
         if isinstance(data, EvCovered):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
           hass_device_id = device.hass_device_entry.id
@@ -364,6 +382,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_pressed",
                  "subtype": name,
+                 "entity_id": entity_id,
                }
              )
           )
@@ -380,6 +399,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_released",
                  "subtype": name,
+                 "entity_id": entity_id,
                }
              )
           )
@@ -398,6 +418,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_hold_start",
                  "subtype": name,
+                 "entity_id": entity_id,
                }
              )
           )
@@ -414,6 +435,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_hold_end",
                  "subtype": name,
+                 "entity_id": entity_id,
                }
              )
           )
@@ -430,6 +452,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_clicked",
                  "subtype": name,
+                 "entity_id": entity_id,
                }
              )
           )
@@ -446,13 +469,13 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                  "device_id": hass_device_id,
                  "type": "button_double_clicked",
                  "subtype": name,
+                 "entity_id": entity_id,
                }
              )
           )
         
  
         # Alles andere wird an die jeweiligen Channel weitergeleitet      
-        channel = self.get_channel(object_id)
         # light event handling
         if isinstance(channel, HausbusLight):
           LOGGER.debug(f" handle_light_event {channel} {data}")
@@ -471,6 +494,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           channel.handle_sensor_event(data)
         else:
           LOGGER.debug(f"nicht unterstützter channel type {channel}")
+
 
     def register_platform_add_channel_callback(
         self,
@@ -501,3 +525,26 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
     async def async_delete_devices(self):
       device_registry = async_get_device_registry(self.hass)
       #device_registry.async_remove_device("fc90771cff9ddaaeb2568f20ec2f8711")
+
+    #@callback
+    #def _state_changed_listener(self, event):
+    #    """Prüfen, ob sich die Attribute dieser Entity geändert haben"""
+    #    entity_id = event.data.get("entity_id")
+    #
+    #   LOGGER.debug(f" event {event}")
+    #
+    #    for channel_name, entities in self.channels.items():  # über alle Channels
+    #      for key, entity in entities.items():             # über alle Entities im Channel
+    #        if entity.entity_id==entity_id:
+    #            LOGGER.debug(f" entity_id 2 {entity_id} gefunden {entity}")
+    #                    
+    #    old_state = event.data.get("old_state")
+    #    new_state = event.data.get("new_state")
+    #
+    #    old_attr = old_state.attributes if old_state else {}
+    #    new_attr = new_state.attributes if new_state else {}
+    #
+        # Pr�fen, ob sich das beobachtete Attribut ge�ndert hat
+        #for key in self._attributes.keys():
+            #if old_attr.get(key) != new_attr.get(key):
+              #LOGGER.debug(f" key {key} old_attr {old_attr.get(key)} new_attr {new_attr.get(key)}")

@@ -58,6 +58,71 @@ dimmer_stop_ramp:
   name: Stop active dimming ramp
   description: Stops a ramp of a dimmer that was started with dimmer_start_ramp
 
+dimmer_set_configuration:
+  target:
+    entity:
+      domain: light
+  name: Configure a dimmer channel
+  description: Set all possible configuration values for a dimmer channel
+  fields:
+    mode:
+      name: Dimming mode
+      description: Defines the mode the dimmer shall work in
+      required: true
+      default: "dimm_trailing_edge"
+      example: "dimm_trailing_edge"
+      selector:
+        select:
+          options:
+            - "dimm_trailing_edge"
+            - "dimm_leading_edge"
+            - "switch_only"
+    dimming_time:
+      name: Time for dimming
+      description: Time (a 50ms) to fade from 0% to 100% brightness when selecting a new brightness with command set_brightness. Possible time 50ms to 10s.
+      required: true
+      default: 12
+      example: 12
+      selector:
+        number:
+          min: 1
+          max: 255
+    ramp_time:
+      name: Time for ramps
+      description: Time (a 50ms) to fade from 0% to 100% brightness when starting a dimming ramp with command start_ramp. Possible time 50ms to 10s.
+      required: true
+      default: 12
+      example: 12
+      selector:
+        number:
+          min: 1
+          max: 255
+    dimming_start_brightness:
+      name: start brightness for dimming
+      description: Lowest brightness a dimming action starts with
+      required: true
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+    dimming_end_brightness:
+      name: end brightness for dimming
+      description: Highest brightness a dimming action ends with
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+
 #RGB services
 rgb_set_color:
   name: Turns on given color with additional parameters
@@ -247,3 +312,23 @@ led_set_min_brightness:
           max: 100
           unit_of_measurement: "%"
           mode: slider
+
+led_set_configuration:
+  target:
+    entity:
+      domain: light
+  name: Configure a led channel
+  description: Set all possible configuration values for a led channel
+  fields:
+    time_base:
+      name: Timebase for time parameters
+      description: The value of a time parameter has this basis. 1000 means that the value is seconds.
+      required: true
+      default: 1000
+      example: 1000
+      selector:
+        number:
+          min: 0
+          max: 1000
+          mode: slider
+          
