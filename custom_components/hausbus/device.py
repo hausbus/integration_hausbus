@@ -30,6 +30,7 @@ class HausbusDevice:
         self.software_version = sw_version
         self.hardware_version = hw_version
         self.firmware_id = firmware_id
+        self.hass_device_entry = None;
 
     """ Die DeviceInfo ist die Beschreibung, mit der ein Gerät der Registry vorgeschlagen wird."""
     @property

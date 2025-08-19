@@ -66,9 +66,9 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
         self._attr_is_on = False
 
     @staticmethod
-    def is_binary_sensor_channel(class_id: int) -> bool:
+    def is_binary_sensor_channel(class_id: int, name:str) -> bool:
         """Check if a class_id is a binary sensor."""
-        return class_id == Taster.CLASS_ID
+        return class_id == Taster.CLASS_ID and not name.startswith("Taster")
 
     def get_hardware_status(self) -> None:
         """Request status of a binary sensor channel from hardware."""

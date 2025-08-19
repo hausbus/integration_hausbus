@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 import logging
-
+from typing import TypeAlias
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -13,9 +13,22 @@ from .gateway import HausbusGateway
 from .const import DOMAIN
 
 #, Platform.NUMBER
-PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.EVENT]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class HausbusConfig:
+    """Class for Hausbus ConfigEntry."""
+
+    #from .gateway import HausbusGateway  # pylint: disable=import-outside-toplevel
+
+    gateway: HausbusGateway
+
+
+HausbusConfigEntry: TypeAlias = ConfigEntry[HausbusConfig]
+
 
 
 async def device_discovery_task(hass: HomeAssistant, gateway: HausbusGateway) -> None:
@@ -56,14 +69,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> 
 
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-
-type HausbusConfigEntry = ConfigEntry[HausbusConfig]
-
-
-@dataclass
-class HausbusConfig:
-    """Class for Hausbus ConfigEntry."""
-
-    from .gateway import HausbusGateway  # pylint: disable=import-outside-toplevel
-
-    gateway: HausbusGateway

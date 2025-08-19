@@ -47,6 +47,7 @@ from .switch import HausbusSwitch, Schalter
 #from .number import HausBusNumber
 from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor, HausbusAnalogEingang, AnalogEingang
 from .binary_sensor import HausbusBinarySensor
+from .event import HausBusEvent
 
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import EvCovered
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvFree import EvFree
@@ -69,6 +70,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         self.config_entry = config_entry
         self.devices: dict[str, HausbusDevice] = {}
         self.channels: dict[str, dict[tuple[str, str], HausbusEntity]] = {}
+        self.events: dict[int, HausBusEvent] = {}
         self.home_server = HomeServer()
         self.home_server.addBusEventListener(self)
         self._new_channel_listeners: dict[
@@ -100,6 +102,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
     def get_device(self, object_id: ObjectId) -> HausbusDevice | None:
         """Get the device referenced by ObjectId from the devices list."""
         return self.devices.get(str(object_id.getDeviceId()))
+
+    def get_event_entity(
+        self, object_id: int
+    ) -> HausBusEvent | None:
+        """Get the event referenced by ObjectId."""
+        return self.events.get(object_id)
 
     def get_channel_list(
         self, object_id: ObjectId
@@ -162,6 +170,30 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 #  asyncio.run_coroutine_threadsafe(
                 #    self._new_channel_listeners[NUMBER_DOMAIN](light._configTest), self.hass.loop
                 #  ).result()
+
+    def create_event_entity(
+        self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
+    ) -> HausBusEvent | None:
+        """Create a event entity according to the type of instance."""
+        if isinstance(instance, Taster):
+            return HausBusEvent(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
+        return None
+
+    def add_event_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
+        """Add a new Haus-Bus Event Channel to this gateway's channel list."""
+
+        device = self.get_device(object_id)
+        if device is not None:
+            event = self.create_event_entity(device, instance, object_id)
+            if event is not None:
+              self.events[object_id.getValue()]=event
+              asyncio.run_coroutine_threadsafe(
+                self._new_channel_listeners["EVENTS"](event), self.hass.loop
+              ).result()
 
     def create_switch_entity(
         self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
@@ -235,7 +267,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
 
     def create_binary_sensor_entity(
         self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
-    ) -> HausbusSensor | None:
+    ) -> HausbusBinarySensor | None:
         """Create a binary sensor entity according to the type of instance."""
         if isinstance(instance, Taster):
             return HausbusBinarySensor(
@@ -268,18 +300,27 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             channel_list is not None
             and self.get_channel_id(object_id) not in channel_list
         ):
+          
+            #LOGGER.debug(f" aktuelle ChannelListe {channel_list}")
+            
             if HausbusLight.is_light_channel(object_id.getClassId()):
               LOGGER.debug(f"create light channel for {instance}")
               self.add_light_channel(instance, object_id)
             elif HausbusSwitch.is_switch_channel(object_id.getClassId()):
               LOGGER.debug(f"create switch channel for {instance}")
               self.add_switch_channel(instance, object_id)
-            elif HausbusBinarySensor.is_binary_sensor_channel(object_id.getClassId()):
-              LOGGER.debug(f"create binary sensor channel for {instance}")
-              self.add_binary_sensor_channel(instance, object_id)
             elif HausbusSensor.is_sensor_channel(object_id.getClassId()):
               LOGGER.debug(f"create sensor channel for {instance}")
               self.add_sensor_channel(instance, object_id)
+            elif HausbusBinarySensor.is_binary_sensor_channel(object_id.getClassId(),instance.name):
+              LOGGER.debug(f"create sensor channel for {instance}")
+              self.add_binary_sensor_channel(instance, object_id)
+        
+        # zusätzlich Event Entities erstellen
+        if HausBusEvent.is_event_channel(object_id.getClassId()) and self.get_event_entity(instance.getObjectId()) is None:
+            LOGGER.debug(f"create event channel for {instance}")
+            self.add_event_channel(instance, object_id)
+              
 
     def busDataReceived(self, busDataMessage: BusDataMessage) -> None:
         """Handle Haus-Bus messages."""
@@ -322,7 +363,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             device.set_type(config.getFCKE())
             
             # Mit der Konfiguration registrieren wir das Device bei HASS
-            asyncio.run_coroutine_threadsafe(self.async_create_device_registry(device), self.hass.loop)
+            asyncio.run_coroutine_threadsafe(self.async_create_device_registry(device), self.hass.loop).result()
                 
             controller.getRemoteObjects()
             return
@@ -347,10 +388,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               
               instance.setName(name)
               if name is not None:
-                
-                # Bei Tastern keinen BinaryChannel anlegen, sondern nur bei anderen Eingängen
-                if not name.startswith("Taster"):
-                  self.add_channel(instance)
+                self.add_channel(instance)
                 
                 # Bei allen Taster Instanzen die Events anlegen, weil da auch ein Taster angeschlossen sein kann
                 if isinstance(instance, Taster):
@@ -361,10 +399,14 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             LOGGER.debug(f"{inputs} inputs angemeldet {device.hass_device_entry.id} deviceId {deviceId}")
             return
         
-        # https://developers.home-assistant.io/docs/core/entity/event/
+        # Device_trigger und Events melden
         if isinstance(data, (EvCovered,EvFree,EvHoldStart,EvHoldEnd,EvClicked,EvDoubleClick)):
           name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, object_id.getClassId(), object_id.getInstanceId())
           self.generate_device_trigger(data, device.hass_device_entry.id, name)
+          eventEntity = self.get_event_entity(object_id.getValue())
+          LOGGER.debug(f"eventEntity is {eventEntity}")
+          if eventEntity is not None:
+            eventEntity.handle_taster_event(data)
         
  
         # Alles andere wird an die jeweiligen Channel weitergeleitet      

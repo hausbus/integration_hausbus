@@ -25,14 +25,13 @@ class HausbusEntity(Entity):
         self._type = channel_type.lower()
         self._instance_id = instance_id
         self._device = device
-        self._attr_unique_id = (
-            f"{self._device.device_id}-{self._type}{self._instance_id}"
-        )
+        self._attr_unique_id = f"{self._device.device_id}-{self._type}{self._instance_id}"
         self._attr_device_info = self._device.device_info
         self._attr_translation_key = self._type
         self._attr_name = channel_name
         self._extra_state_attributes = {}
         self._configuration = {}
+        #LOGGER.debug(f"created unique {self._attr_unique_id} for device {device.device_id} channel_name {channel_name} instance_id {instance_id}")
 
     @property
     def extra_state_attributes(self):
