@@ -1,0 +1,204 @@
+"""Support for Haus-Bus cover."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from pyhausbus.de.hausbus.homeassistant.proxy.Rollladen import Rollladen
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.data.EvStart import EvStart
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.data.EvClosed import EvClosed
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.data.EvOpen import EvOpen
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.data.Status import Status
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.params.EDirection import EDirection
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.params.MOptions import MOptions
+from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.data.Configuration import Configuration
+
+from homeassistant.helpers import entity_platform
+from homeassistant.components.cover import DOMAIN as COVER_DOMAIN, CoverEntity, CoverEntityFeature, CoverDeviceClass
+
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.exceptions import HomeAssistantError
+
+import voluptuous as vol
+
+from .device import HausbusDevice
+from .entity import HausbusEntity
+
+
+if TYPE_CHECKING:
+    from . import HausbusConfigEntry
+
+import logging
+LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: HausbusConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the Haus-Bus cover from a config entry."""
+    gateway = config_entry.runtime_data.gateway
+
+    # Services gelten für alle Hausbus-Entities, die die jeweilige Funktion implementieren
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        "cover_toggle",
+        {
+        },
+        "async_cover_toggle",
+    )
+
+    platform.async_register_entity_service(
+        "cover_set_configuration",
+        {
+            vol.Required("close_time", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Required("open_time", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Optional("invert_direction", default="FALSE"): vol.All(vol.Coerce(bool)),
+        },
+        "async_cover_set_configuration",
+    )
+
+    async def async_add_cover(channel: HausbusEntity) -> None:
+        """Add cover from Haus-Bus."""
+        if isinstance(channel, HausbusCover):
+            async_add_entities([channel])
+
+    gateway.register_platform_add_channel_callback(async_add_cover, COVER_DOMAIN)
+
+
+class HausbusCover(HausbusEntity, CoverEntity):
+    """Representation of a Haus-Bus cover."""
+
+    def __init__(
+        self,
+        instance_id: int,
+        device: HausbusDevice,
+        channel: Rollladen,
+    ) -> None:
+        """Set up cover."""
+        super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
+
+        self._channel = channel
+        self._attr_device_class = CoverDeviceClass.SHUTTER
+        self._attr_supported_features = (
+          CoverEntityFeature.OPEN
+          | CoverEntityFeature.CLOSE
+          | CoverEntityFeature.STOP
+          | CoverEntityFeature.SET_POSITION
+        )
+        self._attr_reports_position = True  # Position wird berichtet :contentReference[oaicite:0]{index=0}
+        self._position: int | None = None
+        self._is_opening: bool | None = None
+        self._is_closing: bool | None = None
+
+    @staticmethod
+    def is_cover_channel(class_id: int) -> bool:
+        """Check if a class_id is a cover."""
+        return class_id == Rollladen.CLASS_ID
+
+    @property
+    def current_cover_position(self) -> int | None:
+        """Position in Prozent (0 = geschlossen, 100 = offen)."""
+        return self._position
+
+    @property
+    def is_closed(self) -> bool | None:
+        """Gibt True zurück, wenn geschlossen."""
+        if self._position is None:
+            return None
+        return self._position == 0
+
+    @property
+    def is_opening(self) -> bool | None:
+        """Gibt True zurück, wenn sich das Rollo öffnet."""
+        return self._is_opening
+
+    @property
+    def is_closing(self) -> bool | None:
+        """Gibt True zurück, wenn sich das Rollo schließt."""
+        return self._is_closing
+
+    async def async_open_cover(self, **kwargs):
+        """Befehl zum Öffnen (Rollos hochfahren)."""
+        LOGGER.debug(f"async_open_cover")
+        self._channel.start(EDirection.TO_OPEN)
+
+    async def async_close_cover(self, **kwargs):
+        """Befehl zum Schließen (Rollos runterfahren)."""
+        LOGGER.debug(f"async_close_cover")
+        self._channel.start(EDirection.TO_CLOSE)
+
+    async def async_stop_cover(self, **kwargs):
+        """Bewegung stoppen."""
+        LOGGER.debug(f"async_stop_cover")
+        self._channel.stop()
+
+    async def async_set_cover_position(self, **kwargs):
+        """Position setzen (0–100)."""
+        position = kwargs.get("position")
+        LOGGER.debug(f"async_set_cover_position position {position}")
+
+        if position is None:
+            return
+        if position > 100:
+            position=100
+        if position < 0:
+            position=0
+          
+        self._channel.moveToPosition(100-position)
+
+    def handle_cover_event(self, data: Any) -> None:
+        """Handle cover events from Haus-Bus."""
+        if isinstance(data, EvStart):
+            direction = data.getDirection()
+            if direction is EDirection.TO_OPEN:
+              self._is_opening = True
+              self._is_closing = False
+            elif direction is EDirection.TO_CLOSE:
+              self._is_opening = False
+              self._is_closing = True
+            else: 
+              LOGGER.debug(f"unexpected direction {direction}")
+            self.schedule_update_ha_state() 
+        elif isinstance(data, EvClosed):
+            self._is_opening = False
+            self._is_closing = False
+            self._position = 100-data.getPosition()
+            self.schedule_update_ha_state() 
+        elif isinstance(data, EvOpen):
+            self._is_opening = False
+            self._is_closing = False
+            self._position = 100
+            self.schedule_update_ha_state()
+        elif isinstance(data, Status):
+            self._position = 100-data.getPosition()
+            self.schedule_update_ha_state()
+        elif isinstance(data, Configuration):
+            self._configuration = data
+            self._extra_state_attributes = {}
+            self._extra_state_attributes["close_time"] = data.getCloseTime()
+            self._extra_state_attributes["open_time"] = data.getOpenTime()
+            self._extra_state_attributes["invert_direction"] = f"{data.getOptions().isInvertDirection()}"
+
+    @callback
+    async def async_cover_toggle(self):
+        """Startet das Rollo in die entgegengesetzte Richtung als letztes mal"""
+        LOGGER.debug(f"async_cover_toggle")
+        self._channel.start(EDirection.TOGGLE)
+        
+    @callback
+    async def async_cover_set_configuration(self, close_time:int, open_time:int, invert_direction:bool):
+        """Setzt die Konfiguration eines Rollos."""
+        LOGGER.debug(f"async_cover_set_configuration close_time {close_time}, open_time {open_time}, invert_direction {invert_direction}")
+        if not self._configuration:
+          LOGGER.debug(f"reading missing configuration")
+          self._channel.getConfiguration()
+          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
+        else:
+          options = self._configuration.getOptions()
+          options.setInvertDirection(invert_direction)
+          self._channel.setConfiguration(close_time, open_time, options)
+          self._channel.getConfiguration()

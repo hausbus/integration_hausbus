@@ -26,6 +26,7 @@ from pyhausbus.ObjectId import ObjectId
 
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+from homeassistant.components.cover import DOMAIN as COVER_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 #from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
@@ -38,12 +39,15 @@ from .light import (
     Dimmer,
     HausbusDimmerLight,
     HausbusLedLight,
+    HausbusBackLight,
     HausbusLight,
     HausbusRGBDimmerLight,
     Led,
+    LogicalButton,
     RGBDimmer,
 )
 from .switch import HausbusSwitch, Schalter
+from .cover import HausbusCover, Rollladen
 #from .number import HausBusNumber
 from .sensor import HausbusSensor, HausbusTemperaturSensor, Temperatursensor, HausbusHelligkeitsSensor, Helligkeitssensor, HausbusFeuchteSensor, Feuchtesensor, HausbusAnalogEingang, AnalogEingang
 from .binary_sensor import HausbusBinarySensor
@@ -56,6 +60,8 @@ from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvHoldEnd import EvHol
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvClicked import EvClicked
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvDoubleClick import EvDoubleClick
 from pyhausbus.de.hausbus.homeassistant.proxy.Taster import Taster
+from pyhausbus.de.hausbus.homeassistant.proxy.PowerMeter import PowerMeter
+from custom_components.hausbus.sensor import HausbusPowerMeter
 
 DOMAIN = "hausbus"
 
@@ -143,6 +149,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                 device,
                 instance,
             )
+        if isinstance(instance, LogicalButton):
+            return HausbusBackLight(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
         if isinstance(instance, RGBDimmer):
             return HausbusRGBDimmerLight(
                 object_id.getInstanceId(),
@@ -220,6 +232,32 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
                     self._new_channel_listeners[SWITCH_DOMAIN](switch), self.hass.loop
                 ).result()
                 switch.get_hardware_status()
+                
+    def create_cover_entity(
+        self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
+    ) -> HausbusCover | None:
+        """Create a cover entity according to the type of instance."""
+        if isinstance(instance, Rollladen):
+            return HausbusCover(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )
+        return None
+
+    def add_cover_channel(self, instance: ABusFeature, object_id: ObjectId) -> None:
+        """Add a new Haus-Bus cover Channel to this gateway's channel list."""
+
+        device = self.get_device(object_id)
+        if device is not None:
+            cover = self.create_cover_entity(device, instance, object_id)
+            channel_list = self.get_channel_list(object_id)
+            if cover is not None and channel_list is not None:
+                channel_list[self.get_channel_id(object_id)] = cover
+                asyncio.run_coroutine_threadsafe(
+                    self._new_channel_listeners[COVER_DOMAIN](cover), self.hass.loop
+                ).result()
+                cover.get_hardware_status()
 
     def create_sensor_entity(
         self, device: HausbusDevice, instance: ABusFeature, object_id: ObjectId
@@ -245,6 +283,12 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             )    
         elif isinstance(instance, AnalogEingang):
             return HausbusAnalogEingang(
+                object_id.getInstanceId(),
+                device,
+                instance,
+            )    
+        elif isinstance(instance, PowerMeter):
+            return HausbusPowerMeter(
                 object_id.getInstanceId(),
                 device,
                 instance,
@@ -309,6 +353,9 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             elif HausbusSwitch.is_switch_channel(object_id.getClassId()):
               LOGGER.debug(f"create switch channel for {instance}")
               self.add_switch_channel(instance, object_id)
+            elif HausbusCover.is_cover_channel(object_id.getClassId()):
+              LOGGER.debug(f"create cover channel for {instance}")
+              self.add_cover_channel(instance, object_id)
             elif HausbusSensor.is_sensor_channel(object_id.getClassId()):
               LOGGER.debug(f"create sensor channel for {instance}")
               self.add_sensor_channel(instance, object_id)
@@ -333,7 +380,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         if deviceId == HOMESERVER_DEVICE_ID or deviceId == 9999 or deviceId == 12222:
             return
 
-        if deviceId in [110, 503, 1000,1541,3422,4000,4001,4002,4003,4004,4005,4009,4096,5068,8192,8270,11581,12223,12622,13976,14896,18343,19075,20043,21336,22909,24261,25661,25874,28900,29725,3423,4006,4008]:
+        if deviceId in [110, 503, 1000,1541,3422,4000,4001,4002,4003,4004,4005,4009,4096,5068,8192,8270,11581,12223,12622,13976,14896,18343,19075,20043,21336,22909,24261,25661,25874,28900,3423,4006,4008]:
             return
 
         LOGGER.debug(f"busDataReceived with data = {data}")
@@ -383,7 +430,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               name = templates.get_feature_name_from_template(device.firmware_id, device.fcke, instanceObjectId.getClassId(), instanceObjectId.getInstanceId())
               LOGGER.debug(f"name for firmwareId {device.firmware_id}, fcke: {device.fcke}, classId {instanceObjectId.getClassId()}, instanceId {instanceObjectId.getInstanceId()} is {name}")
               
-              if deviceId == 22784:
+              if deviceId == 22784 or deviceId == 29725:
                 name = f"Object {instance.getObjectId()}"
               
               instance.setName(name)
@@ -420,12 +467,15 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         elif isinstance(channel, HausbusSwitch):
           LOGGER.debug(f" handle_switch_event {channel} {data}")
           channel.handle_switch_event(data)
+        elif isinstance(channel, HausbusCover):
+          LOGGER.debug(f" handle_cover_event {channel} {data}")
+          channel.handle_cover_event(data)
         # binary sensor event handling
         elif isinstance(channel, HausbusBinarySensor):
           LOGGER.debug(f" handle_binary_sensor_event {channel} {data}")
           channel.handle_binary_sensor_event(data)
         # temperatur sensor event handling
-        elif isinstance(channel, (HausbusTemperaturSensor, HausbusHelligkeitsSensor, HausbusFeuchteSensor, HausbusAnalogEingang)):
+        elif isinstance(channel, (HausbusTemperaturSensor, HausbusHelligkeitsSensor, HausbusFeuchteSensor, HausbusAnalogEingang, HausbusPowerMeter)):
           LOGGER.debug(f" handle_sensor_event {channel} {data}")
           channel.handle_sensor_event(data)
         else:

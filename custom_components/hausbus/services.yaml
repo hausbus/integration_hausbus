@@ -338,7 +338,7 @@ led_set_configuration:
   fields:
     time_base:
       name: Timebase for time parameters
-      description: The value of a time parameter has this basis. 1000 means that the value is seconds.
+      description: The value of a time parameter has this basis. 1000 means that the value means seconds, 1 means that the value means milliseconds.
       required: true
       default: 1000
       example: 1000
@@ -347,4 +347,359 @@ led_set_configuration:
           min: 1
           max: 65535
           mode: slider
-          
+
+# Temperatur sensor services
+temperatur_sensor_set_configuration:
+  target:
+    entity:
+      domain: sensor
+  name: Configure a temperature sensor channel
+  description: Set all possible configuration values for a temperature sensor
+  fields:
+    correction:
+      name: Correction value to adjust the reported temperature.
+      description: Correction value to adjust the reported temperature. Value can be negative and positive and is added to the reported sensor value.
+      required: true
+      default: -2
+      example: -0.5
+      selector:
+        number:
+          min: -10
+          max: 10
+          step: 0.1
+          mode: slider
+          unit_of_measurement: "°C"
+    auto_event_diff:
+      name: Temperature change that triggers a new event.
+      description: Instead of a fixed event interval this temperature change triggers an temperature update 
+      required: true
+      default: 0.5
+      example: 0.5
+      selector:
+        number:
+          min: 0.1
+          max: 20
+          step: 0.1
+          mode: slider
+          unit_of_measurement: "°C"
+    manual_event_interval:
+      name: Interval of reported temperature values
+      description: Time interval that triggers a temperature update independent from temperature changes 
+      required: true
+      default: "5 minutes"
+      example: "60 seconds"
+      selector:
+        select:
+          options:
+            - "1 second"
+            - "5 seconds"
+            - "10 seconds"
+            - "30 seconds"
+            - "1 minute"
+            - "5 minutes"
+            - "10 minutes"
+            - "20 minutes"
+            - "30 minutes"
+            - "60 minutes"
+
+# PowerMeter sensor services
+power_meter_sensor_set_configuration:
+  target:
+    entity:
+      domain: sensor
+  name: Configure a power meter channel
+  description: Set all possible configuration values for a power meter
+  fields:
+    correction:
+      name: Correction value to adjust the reported power.
+      description: Correction value to adjust the reported power. Value can be negative and positive and is added to the reported power value.
+      required: true
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 0.1
+          mode: slider
+          unit_of_measurement: "kW"
+    auto_event_diff:
+      name: Power change that triggers a new event.
+      description: Instead of a fixed event interval this power change triggers an power update 
+      required: true
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 0.1
+          max: 100
+          step: 0.1
+          mode: slider
+          unit_of_measurement: "kW"
+    manual_event_interval:
+      name: Interval of reported power values
+      description: Time interval that triggers a power update independent from power changes 
+      required: true
+      default: "5 minutes"
+      example: "60 seconds"
+      selector:
+        select:
+          options:
+            - "1 second"
+            - "5 seconds"
+            - "10 seconds"
+            - "30 seconds"
+            - "1 minute"
+            - "5 minutes"
+            - "10 minutes"
+            - "20 minutes"
+            - "30 minutes"
+            - "60 minutes"
+
+# Brightness sensor services
+helligkeits_sensor_set_configuration:
+  target:
+    entity:
+      domain: sensor
+  name: Configure a brightness sensor channel
+  description: Set all possible configuration values for a brightness sensor
+  fields:
+    correction:
+      name: Correction value to adjust the reported brightness.
+      description: Correction value to adjust the reported brightness. Value can be negative and positive and is added to the reported sensor value.
+      required: true
+      default: 0
+      example: -10
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 10
+          mode: slider
+          unit_of_measurement: "lux"
+    auto_event_diff:
+      name: Brightness change that triggers a new event.
+      description: Instead of a fixed event interval this brightness change triggers an brightness update 
+      required: true
+      default: 30
+      example: 30
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 10
+          mode: slider
+          unit_of_measurement: "lux"
+    manual_event_interval:
+      name: Interval of reported brightness values
+      description: Time interval that triggers a brightness update independent from brightness changes 
+      required: true
+      default: "5 minutes"
+      example: "60 seconds"
+      selector:
+        select:
+          options:
+            - "1 second"
+            - "5 seconds"
+            - "10 seconds"
+            - "30 seconds"
+            - "1 minute"
+            - "5 minutes"
+            - "10 minutes"
+            - "20 minutes"
+            - "30 minutes"
+            - "60 minutes"
+
+# Feuchtigkeitssensor services
+feuchte_sensor_set_configuration:
+  target:
+    entity:
+      domain: sensor
+  name: Configure a humidity sensor channel
+  description: Set all possible configuration values for a humidity sensor
+  fields:
+    correction:
+      name: Correction value to adjust the reported humidity.
+      description: Correction value to adjust the reported humidity. Value can be negative and positive and is added to the reported sensor value.
+      required: true
+      default: 0
+      example: -0.5
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 0.1
+          mode: slider
+          unit_of_measurement: "%"
+    auto_event_diff:
+      name: Humidity change that triggers a new event.
+      description: Instead of a fixed event interval this humidity change triggers an humidity update 
+      required: true
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 0.1
+          max: 100
+          step: 0.1
+          mode: slider
+          unit_of_measurement: "%"
+    manual_event_interval:
+      name: Interval of reported humidity values
+      description: Time interval that triggers a humidity update independent from humidity changes 
+      required: true
+      default: "5 minutes"
+      example: "60 seconds"
+      selector:
+        select:
+          options:
+            - "1 second"
+            - "5 seconds"
+            - "10 seconds"
+            - "30 seconds"
+            - "1 minute"
+            - "5 minutes"
+            - "10 minutes"
+            - "20 minutes"
+            - "30 minutes"
+            - "60 minutes"
+
+# Analogeingang services
+analog_eingang_set_configuration:
+  target:
+    entity:
+      domain: sensor
+  name: Configure a analog input channel
+  description: Set all possible configuration values for a analog input channel
+  fields:
+    correction:
+      name: Correction value to adjust the reported analog input.
+      description: Correction value to adjust the reported analog input. Value can be negative and positive and is added to the reported input value.
+      required: true
+      default: 0
+      example: -10
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 1
+          mode: slider
+    auto_event_diff:
+      name: Analog input change that triggers a new event.
+      description: Instead of a fixed event interval this Analog input change triggers an analog input update 
+      required: true
+      default: 30
+      example: 30
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 1
+          mode: slider
+    manual_event_interval:
+      name: Interval of reported brightness values
+      description: Time interval that triggers a brightness update independent from brightness changes 
+      required: true
+      default: "5 minutes"
+      example: "60 seconds"
+      selector:
+        select:
+          options:
+            - "1 second"
+            - "5 seconds"
+            - "10 seconds"
+            - "30 seconds"
+            - "1 minute"
+            - "5 minutes"
+            - "10 minutes"
+            - "20 minutes"
+            - "30 minutes"
+            - "60 minutes"
+            
+# Schalter Services
+switch_set_configuration:
+  target:
+    entity:
+      domain: switch
+  name: Configure a switch channel
+  description: Set all possible configuration values for a switch channel
+  fields:
+    max_on_time:
+      name: Maximum allowed on time
+      description: If configured greater than 0 the switch disabled automatically after the given time.
+      required: true
+      default: 0
+      example: 600
+      selector:
+        number:
+          min: 1
+          max: 65535
+          mode: slider
+    off_delay_time:
+      name: Delay time before switching off
+      description: Switching off this relay is delayed for the configured time
+      required: true
+      default: 0
+      example: 10
+      selector:
+        number:
+          min: 1
+          max: 65535
+          mode: slider
+    time_base:
+      name: Timebase for time parameters
+      description: The value of a time parameter has this basis. 1000 means that the value means seconds, 1 means that the value means milliseconds.
+      required: true
+      default: 1000
+      example: 1000
+      selector:
+        number:
+          min: 1
+          max: 65535
+          mode: slider
+
+# Rolladen Services
+cover_toggle:
+  target:
+    entity:
+      domain: cover
+  name: Toggle direction
+  description: Starts the cover in the oposite direction than last time
+
+cover_set_configuration:
+  target:
+    entity:
+      domain: cover
+  name: Configure a cover channel
+  description: Set all possible configuration values for a cover channel
+  fields:
+    close_time:
+      name: Duration of a full cover close movement
+      description: Time it takes to close the shutter from completely open to completely closed
+      required: true
+      default: 30
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    open_time:
+      name: Duration of a full cover open movement
+      description: Time it takes to close the shutter from completely closed to completely open
+      required: true
+      default: 30
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    invert_direction:
+      name: Inverts UP and DOWN direction
+      description: Can be used to invert the relay outputs for UP and DOWN direction 
+      required: true
+      default: False
+      example: False
+      selector:
+        boolean:

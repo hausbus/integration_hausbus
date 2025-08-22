@@ -14,11 +14,18 @@ from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.EvOn import (
 from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.Status import (
     Status as SchalterStatus,
 )
+from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.Configuration import (
+    Configuration as SchalterConfiguration,
+)
 from pyhausbus.de.hausbus.homeassistant.proxy.schalter.params.EState import EState
 
+from homeassistant.helpers import entity_platform
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN, SwitchEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.exceptions import HomeAssistantError
+
+import voluptuous as vol
 
 from .const import ATTR_ON_STATE
 from .device import HausbusDevice
@@ -26,6 +33,9 @@ from .entity import HausbusEntity
 
 if TYPE_CHECKING:
     from . import HausbusConfigEntry
+
+import logging
+LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -35,6 +45,19 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Haus-Bus switch from a config entry."""
     gateway = config_entry.runtime_data.gateway
+
+    # Services gelten für alle Hausbus-Entities, die die jeweilige Funktion implementieren
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        "switch_set_configuration",
+        {
+            vol.Required("max_on_time", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+            vol.Required("off_delay_time", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+            vol.Required("time_base", default=1000): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+        },
+        "async_switch_set_configuration",
+    )
 
     async def async_add_switch(channel: HausbusEntity) -> None:
         """Add switch from Haus-Bus."""
@@ -64,10 +87,6 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
         """Check if a class_id is a switch."""
         return class_id == Schalter.CLASS_ID
 
-    def get_hardware_status(self) -> None:
-        """Request status of a switch channel from hardware."""
-        self._channel.getStatus()
-
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""
         self._channel.off(0)
@@ -90,13 +109,19 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
         """Handle switch events from Haus-Bus."""
         if isinstance(data, SchalterEvOn):
             self.switch_turn_on()
-        if isinstance(data, SchalterStatus):
+        elif isinstance(data, SchalterStatus):
             if data.getState() == EState.ON:
                 self.switch_turn_on()
             else:
                 self.switch_turn_off()
-        if isinstance(data, (SchalterEvOff)):
+        elif isinstance(data, (SchalterEvOff)):
             self.switch_turn_off()
+        elif isinstance(data, SchalterConfiguration):
+            self._configuration = data
+            self._extra_state_attributes = {}
+            self._extra_state_attributes["max_on_time"] = data.getMaxOnTime()
+            self._extra_state_attributes["off_delay_time"] = data.getOffDelayTime()
+            self._extra_state_attributes["time_base"] = data.getTimeBase()
 
     @callback
     def async_update_callback(self, **kwargs: Any) -> None:
@@ -108,3 +133,15 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
 
         if state_changed:
             self.schedule_update_ha_state()
+
+    @callback
+    async def async_switch_set_configuration(self, max_on_time:int, off_delay_time:int, time_base:int):
+        """Setzt die Konfiguration eines Relais."""
+        LOGGER.debug(f"async_switch_set_configuration max_on_time {max_on_time}, off_delay_time {off_delay_time}, time_base {time_base}")
+        if not self._configuration:
+          LOGGER.debug(f"reading missing configuration")
+          self._channel.getConfiguration()
+          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
+        else:
+          self._channel.setConfiguration(max_on_time, off_delay_time, time_base, self._configuration.getOptions(), self._configuration.getDisableBitIndex())
+          self._channel.getConfiguration()

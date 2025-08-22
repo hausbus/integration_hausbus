@@ -28,10 +28,15 @@ class HausbusEntity(Entity):
         self._attr_unique_id = f"{self._device.device_id}-{self._type}{self._instance_id}"
         self._attr_device_info = self._device.device_info
         self._attr_translation_key = self._type
-        self._attr_name = channel_name
+        self._attr_name = channel_name  # später translations/xx.json verwenden f"{self.translate('strom')} {index}"
         self._extra_state_attributes = {}
         self._configuration = {}
         #LOGGER.debug(f"created unique {self._attr_unique_id} for device {device.device_id} channel_name {channel_name} instance_id {instance_id}")
+
+    def get_hardware_status(self) -> None:
+        """Request status of this channel from hardware."""
+        self._channel.getStatus()
+        self._channel.getConfiguration()
 
     @property
     def extra_state_attributes(self):

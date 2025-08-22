@@ -30,6 +30,10 @@ from pyhausbus.de.hausbus.homeassistant.proxy.led.data.Status import Status as l
 from pyhausbus.de.hausbus.homeassistant.proxy.led.data.Configuration import (
     Configuration as LedConfiguration,
 )
+from pyhausbus.de.hausbus.homeassistant.proxy.logicalButton.data.Configuration import (
+    Configuration as LogicalButtonConfiguration,
+)
+
 from pyhausbus.de.hausbus.homeassistant.proxy.RGBDimmer import RGBDimmer
 from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.EvOff import (
     EvOff as rgbDimmerEvOff,
@@ -55,15 +59,17 @@ from homeassistant.components.light import (
 
 import voluptuous as vol
 
-from homeassistant.helpers import entity_platform, config_validation as cv
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import ATTR_ON_STATE
 from .device import HausbusDevice
 from .entity import HausbusEntity
 
 import logging
+from pyhausbus.de.hausbus.homeassistant.proxy.LogicalButton import LogicalButton
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -175,7 +181,7 @@ async def async_setup_entry(
         },
         "async_led_set_configuration",
     )
-
+    
     # Registriere Callback für neue Light-Entities
     async def async_add_light(channel: HausbusEntity) -> None:
         """Add light from Haus-Bus."""
@@ -205,11 +211,7 @@ class HausbusLight(HausbusEntity, LightEntity):
     @staticmethod
     def is_light_channel(class_id: int) -> bool:
         """Check if a class_id is a light."""
-        return class_id in (Dimmer.CLASS_ID, RGBDimmer.CLASS_ID, Led.CLASS_ID)
-
-    @abstractmethod
-    def get_hardware_status(self) -> None:
-        """Request status of a light channel from hardware."""
+        return class_id in (Dimmer.CLASS_ID, RGBDimmer.CLASS_ID, Led.CLASS_ID, LogicalButton.CLASS_ID)
 
     def set_light_color(self, red: int, green: int, blue: int) -> None:
         """Set the color of a light channel."""
@@ -283,12 +285,6 @@ class HausbusDimmerLight(HausbusLight):
         # Dann noch eine generische Funktion in HausBusEntitiy erstellen, die alle Konfigurationen Number, Select, usw liefert, damit sie vom Gateway registriert werden können
         # self._configTest = HausBusNumber(self)
 
-    def get_hardware_status(self) -> None:
-        """Request status of a light channel from hardware."""
-        LOGGER.debug(f"dimmer get_hardware_status")
-        self._channel.getStatus()
-        self._channel.getConfiguration()
-
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""
         self._channel.setBrightness(0, 0)
@@ -358,7 +354,7 @@ class HausbusDimmerLight(HausbusLight):
            "switch_only": DimmerMode.SWITCH,
         }.get(mode, DimmerMode.SWITCH)
         self._channel.setConfiguration(hbDimmerMode, dimming_time, ramp_time, dimming_start_brightness, dimming_end_brightness)
-
+        self._channel.getConfiguration()
 
 class HausbusRGBDimmerLight(HausbusLight):
     """Representation of a Haus-Bus RGB dimmer."""
@@ -375,10 +371,6 @@ class HausbusRGBDimmerLight(HausbusLight):
         self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.HS}
         self._attr_color_mode = ColorMode.HS
-
-    def get_hardware_status(self) -> None:
-        """Request status of a light channel from hardware."""
-        self._channel.getStatus()
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""
@@ -433,7 +425,7 @@ class HausbusRGBDimmerLight(HausbusLight):
         """Setzt die Konfiguration eines RGB Dimmers."""
         LOGGER.debug(f"async_rgb_set_configuration dimming_time {dimming_time}")
         self._channel.setConfiguration(dimming_time)
-
+        self._channel.getConfiguration()
 
 class HausbusLedLight(HausbusLight):
     """Representation of a Haus-Bus LED."""
@@ -451,11 +443,6 @@ class HausbusLedLight(HausbusLight):
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
 
-    def get_hardware_status(self) -> None:
-        """Request status of a light channel from hardware."""
-        LOGGER.debug(f"led get_hardware_status")
-        self._channel.getStatus()
-        self._channel.getConfiguration()
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""
@@ -513,5 +500,47 @@ class HausbusLedLight(HausbusLight):
         if not self._configuration:
           LOGGER.debug(f"reading missing configuration")
           self._channel.getConfiguration()
+          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
         else:
           self._channel.setConfiguration(self._configuration.getDimmOffset(), self._configuration.getMinBrightness(), time_base, self._configuration.getOptions())
+          self._channel.getConfiguration()
+
+class HausbusBackLight(HausbusLight):
+    """Representation of a Haus-Bus backlight."""
+
+    def __init__(
+        self,
+        instance_id: int,
+        device: HausbusDevice,
+        channel: LogicalButton,
+    ) -> None:
+        """Set up light."""
+        super().__init__(instance_id, device, channel)
+
+        self._channel = channel
+        self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
+        self._attr_color_mode = ColorMode.BRIGHTNESS
+
+
+    def turn_off(self, **kwargs: Any) -> None:
+        """Turn off action."""
+        self._channel.setMinBrightness(0)
+        self.light_turn_off()
+
+    def turn_on(self, **kwargs: Any) -> None:
+        """Turn on action."""
+        brightness = kwargs.get(ATTR_BRIGHTNESS, self._attr_brightness)
+        brightness = round(brightness * 100 // 255)
+        self._channel.setMinBrightness(brightness)
+        self.set_light_brightness(brightness)
+
+    def handle_backlight_event(self, data: Any) -> None:
+        """Handle backlight events from HausBus."""
+        super().handle_light_event(data)
+        # backlight event handling
+        if isinstance(data, LogicalButtonConfiguration):
+            self._configuration = data
+            self._extra_state_attributes = {}
+            #self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
+            #self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
+            self._extra_state_attributes["time_base"] = data.getTimeBase()

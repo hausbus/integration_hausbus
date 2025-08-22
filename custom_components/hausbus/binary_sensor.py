@@ -70,11 +70,6 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
         """Check if a class_id is a binary sensor."""
         return class_id == Taster.CLASS_ID and not name.startswith("Taster")
 
-    def get_hardware_status(self) -> None:
-        """Request status of a binary sensor channel from hardware."""
-        LOGGER.debug("Status of BinarySensor %s (%s)",self._instance_id, self._device.device_id )
-        self._channel.getStatus()
-
     def binary_sensor_covered(self) -> None:
         """Covered binary sensor channel."""
         LOGGER.debug("BinarySensor %s covered (%s)",self._instance_id, self._device.device_id )

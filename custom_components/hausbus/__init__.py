@@ -13,7 +13,7 @@ from .gateway import HausbusGateway
 from .const import DOMAIN
 
 #, Platform.NUMBER
-PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.EVENT]
+PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.EVENT, Platform.COVER]
 
 _LOGGER = logging.getLogger(__name__)
 
