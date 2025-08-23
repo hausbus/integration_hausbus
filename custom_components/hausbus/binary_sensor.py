@@ -1,24 +1,15 @@
-"""Support for Haus-Bus binary sensors(Taster)."""
+"""Support for Haus-Bus binary sensors (Digital Inputs / Taster)."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
 from pyhausbus.de.hausbus.homeassistant.proxy.Taster import Taster
-from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.Enabled import (
-    Enabled as TasterEnabled,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import (
-    EvCovered as TasterCovered,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvFree import (
-    EvFree as TasterFree,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.Status import (
-    Status as TasterStatus,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.Enabled import (Enabled as TasterEnabled)
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvCovered import (EvCovered as TasterCovered)
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvFree import (EvFree as TasterFree)
+from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.Status import (Status as TasterStatus)
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.params.EState import EState
-
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN, BinarySensorEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -31,19 +22,14 @@ if TYPE_CHECKING:
     from . import HausbusConfigEntry
 
 import logging
-
 LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: HausbusConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up the Haus-Bus binary sensor from a config entry."""
+async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry,async_add_entities: AddEntitiesCallback) -> None:
+    """Set up a binary sensor from a config entry."""
     gateway = config_entry.runtime_data.gateway
 
     async def async_add_binary_sensor(channel: HausbusEntity) -> None:
-        """Add binary sensor from Haus-Bus."""
+        """Add binary sensor entity."""
         if isinstance(channel, HausbusBinarySensor):
             async_add_entities([channel])
 
@@ -53,12 +39,7 @@ async def async_setup_entry(
 class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
     """Representation of a Haus-Bus binary sensor."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Taster,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: Taster) -> None:
         """Set up binary sensor."""
         super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
 
@@ -67,7 +48,7 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
 
     @staticmethod
     def is_binary_sensor_channel(class_id: int, name:str) -> bool:
-        """Check if a class_id is a binary sensor."""
+        """Check if a class_id is a binary sensor. Instances thats name start with Taster are handled as EventEntities """
         return class_id == Taster.CLASS_ID and not name.startswith("Taster")
 
     def binary_sensor_covered(self) -> None:
@@ -82,18 +63,18 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
         params = {ATTR_ON_STATE: False}
         self.async_update_callback(**params)
 
-    def handle_binary_sensor_event(self, data: Any) -> None:
-        """Handle binary sensor events from Haus-Bus."""
+    def handle_event(self, data: Any) -> None:
+        """Handle binary sensor events."""
         if isinstance(data, TasterCovered):
             self.binary_sensor_covered()
-        if isinstance(data, TasterFree):
+        elif isinstance(data, TasterFree):
             self.binary_sensor_free()    
-        if isinstance(data, TasterStatus):
+        elif isinstance(data, TasterStatus):
             if data.getState() == EState.PRESSED:
                 self.binary_sensor_covered()
             else:
                 self.binary_sensor_free()
-        if isinstance(data, (TasterEnabled)):
+        elif isinstance(data, (TasterEnabled)):
             self.binary_sensor_covered()
 
     @callback

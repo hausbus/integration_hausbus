@@ -1,4 +1,4 @@
-"""The Haus-Bus integration."""
+"""Integration for all haus-bus.de modules"""
 
 from __future__ import annotations
 
@@ -13,35 +13,31 @@ from .gateway import HausbusGateway
 from .const import DOMAIN
 
 #, Platform.NUMBER
-PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.EVENT, Platform.COVER]
+PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.EVENT, Platform.COVER, Platform.BUTTON]
 
-_LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
 class HausbusConfig:
     """Class for Hausbus ConfigEntry."""
 
-    #from .gateway import HausbusGateway  # pylint: disable=import-outside-toplevel
-
     gateway: HausbusGateway
-
 
 HausbusConfigEntry: TypeAlias = ConfigEntry[HausbusConfig]
 
 
-
-async def device_discovery_task(hass: HomeAssistant, gateway: HausbusGateway) -> None:
-    """Device discovery is repeated every minute."""
-    while True:
-        # Perform device discovery
-        hass.async_add_executor_job(gateway.home_server.searchDevices)
-        # Wait for 60 seconds
-        await asyncio.sleep(60)
+#async def device_discovery_task(hass: HomeAssistant, gateway: HausbusGateway) -> None:
+#    """Device discovery is repeated every minute."""
+#    while True:
+#        # Perform device discovery
+#        hass.async_add_executor_job(gateway.home_server.searchDevices)
+#        # Wait for 60 seconds
+#        await asyncio.sleep(60)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> bool:
-    """Set up Haus-Bus from a config entry."""
+    """Set up Haus-Bus integration from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
 
@@ -49,19 +45,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
     entry.runtime_data = HausbusConfig(gateway)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
-
-    _LOGGER.debug("start searching devices")
-
     # search devices after adding all callbacks to the gateway object repeatedly
-    entry.async_create_background_task(
-        hass,
-        target=device_discovery_task(hass, gateway),
-        name="Hausbus device discovery task",
-    )
+    #entry.async_create_background_task(
+    #    hass,
+    #    target=device_discovery_task(hass, gateway),
+    #    name="Hausbus device discovery task",
+    #)
+    
+    # Creates a button to manually start device discovery and automatically starts it once
+    hass.async_create_task(gateway.createDiscoveryButtonAndSearchDevices())
 
     return True
 
-
+    
 async def async_unload_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> bool:
     """Unload a config entry."""
     gateway = entry.runtime_data.gateway

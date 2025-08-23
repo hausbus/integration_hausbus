@@ -2,60 +2,31 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
 import colorsys
 from typing import TYPE_CHECKING, Any
 
 # from .number import HausBusNumber
 from pyhausbus.ABusFeature import ABusFeature
 from pyhausbus.de.hausbus.homeassistant.proxy.Dimmer import Dimmer
-from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.EvOff import (
-    EvOff as DimmerEvOff,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.Configuration import (
-    Configuration as DimmerConfiguration,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.EvOff import EvOff as DimmerEvOff
+from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.Configuration import Configuration as DimmerConfiguration
 from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.EvOn import EvOn as DimmerEvOn
-from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.Status import (
-    Status as DimmerStatus,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.data.Status import Status as DimmerStatus
 from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.params.EDirection import EDirection
-from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.params.EMode import (
-    EMode as DimmerMode,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.dimmer.params.EMode import EMode as DimmerMode
 from pyhausbus.de.hausbus.homeassistant.proxy.Led import Led
 from pyhausbus.de.hausbus.homeassistant.proxy.led.data.EvOff import EvOff as ledEvOff
 from pyhausbus.de.hausbus.homeassistant.proxy.led.data.EvOn import EvOn as ledEvOn
 from pyhausbus.de.hausbus.homeassistant.proxy.led.data.Status import Status as ledStatus
-from pyhausbus.de.hausbus.homeassistant.proxy.led.data.Configuration import (
-    Configuration as LedConfiguration,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.logicalButton.data.Configuration import (
-    Configuration as LogicalButtonConfiguration,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.led.data.Configuration import Configuration as LedConfiguration
 
 from pyhausbus.de.hausbus.homeassistant.proxy.RGBDimmer import RGBDimmer
-from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.EvOff import (
-    EvOff as rgbDimmerEvOff,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.EvOn import (
-    EvOn as rgbDimmerEvOn,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.Status import (
-    Status as rgbDimmerStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.Configuration import (
-    Configuration as rGBConfiguration,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.EvOff import EvOff as rgbDimmerEvOff
+from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.EvOn import EvOn as rgbDimmerEvOn
+from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.Status import Status as rgbDimmerStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.rGBDimmer.data.Configuration import Configuration as rGBConfiguration
 
-from homeassistant.components.light import (
-    ATTR_BRIGHTNESS,
-    ATTR_BRIGHTNESS_PCT,
-    ATTR_HS_COLOR,
-    DOMAIN as LIGHT_DOMAIN,
-    ColorMode,
-    LightEntity,
-)
+from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_BRIGHTNESS_PCT, ATTR_HS_COLOR, DOMAIN as LIGHT_DOMAIN, ColorMode, LightEntity
 
 import voluptuous as vol
 
@@ -76,11 +47,7 @@ if TYPE_CHECKING:
     from . import HausbusConfigEntry
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: HausbusConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
+async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry,async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Haus-Bus lights from a config entry."""
 
     gateway = config_entry.runtime_data.gateway
@@ -181,7 +148,7 @@ async def async_setup_entry(
         },
         "async_led_set_configuration",
     )
-    
+
     # Registriere Callback für neue Light-Entities
     async def async_add_light(channel: HausbusEntity) -> None:
         """Add light from Haus-Bus."""
@@ -195,12 +162,7 @@ async def async_setup_entry(
 class HausbusLight(HausbusEntity, LightEntity):
     """Representation of a Haus-Bus light."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: ABusFeature,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: ABusFeature) -> None:
         """Set up light."""
         super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
 
@@ -237,7 +199,7 @@ class HausbusLight(HausbusEntity, LightEntity):
         params = {ATTR_ON_STATE: False}
         self.async_update_callback(**params)
 
-    def handle_light_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle light events from Haus-Bus."""
         # light off events
         if isinstance(data, (DimmerEvOff, ledEvOff, rgbDimmerEvOff)):
@@ -269,12 +231,7 @@ class HausbusLight(HausbusEntity, LightEntity):
 class HausbusDimmerLight(HausbusLight):
     """Representation of a Haus-Bus dimmer."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Dimmer,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: Dimmer) -> None:
         """Set up light."""
         super().__init__(instance_id, device, channel)
 
@@ -295,9 +252,9 @@ class HausbusDimmerLight(HausbusLight):
         brightness = round(brightness * 100 // 255)
         self._channel.setBrightness(brightness, 0)
 
-    def handle_light_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle dimmer events from HausBus."""
-        super().handle_light_event(data)
+        super().handle_event(data)
         # dimmer event handling
         if isinstance(data, DimmerEvOn):
             self.set_light_brightness(data.getBrightness())
@@ -322,7 +279,7 @@ class HausbusDimmerLight(HausbusLight):
             self._extra_state_attributes["dimming_start_brightness"] = data.getDimmingRangeStart()
             self._extra_state_attributes["dimming_end_brightness"] = data.getDimmingRangeEnd()
             LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
-            
+
     async def async_dimmer_set_brightness(self, brightness: int, duration:int):
         """Setzt eine Helligkeit mit einer Dauer."""
         LOGGER.debug(f"async_dimmer_set_brightness brightness {brightness}, duration {duration}")
@@ -356,15 +313,11 @@ class HausbusDimmerLight(HausbusLight):
         self._channel.setConfiguration(hbDimmerMode, dimming_time, ramp_time, dimming_start_brightness, dimming_end_brightness)
         self._channel.getConfiguration()
 
+
 class HausbusRGBDimmerLight(HausbusLight):
     """Representation of a Haus-Bus RGB dimmer."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: RGBDimmer,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: RGBDimmer) -> None:
         """Set up light."""
         super().__init__(instance_id, device, channel)
 
@@ -385,9 +338,9 @@ class HausbusRGBDimmerLight(HausbusLight):
         red, green, blue = tuple(round(x * 100) for x in rgb)
         self._channel.setColor(red, green, blue, 0)
 
-    def handle_light_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle RGB dimmer events from HausBus."""
-        super().handle_light_event(data)
+        super().handle_event(data)
         # rgb dimmmer event handling
         if isinstance(data, rgbDimmerEvOn):
             self.set_light_color(
@@ -427,22 +380,17 @@ class HausbusRGBDimmerLight(HausbusLight):
         self._channel.setConfiguration(dimming_time)
         self._channel.getConfiguration()
 
+
 class HausbusLedLight(HausbusLight):
     """Representation of a Haus-Bus LED."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Led,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: Led) -> None:
         """Set up light."""
         super().__init__(instance_id, device, channel)
 
         self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
-
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""
@@ -454,9 +402,9 @@ class HausbusLedLight(HausbusLight):
         brightness = round(brightness * 100 // 255)
         self._channel.on(brightness, 0, 0)
 
-    def handle_light_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle led events from HausBus."""
-        super().handle_light_event(data)
+        super().handle_event(data)
         # led event handling
         if isinstance(data, ledEvOn):
             self.set_light_brightness(data.getBrightness())
@@ -468,8 +416,8 @@ class HausbusLedLight(HausbusLight):
         elif isinstance(data, LedConfiguration):
             self._configuration = data
             self._extra_state_attributes = {}
-            #self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
-            #self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
+            # self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
+            # self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
             self._extra_state_attributes["time_base"] = data.getTimeBase()
 
     # SERVICES
@@ -505,22 +453,17 @@ class HausbusLedLight(HausbusLight):
           self._channel.setConfiguration(self._configuration.getDimmOffset(), self._configuration.getMinBrightness(), time_base, self._configuration.getOptions())
           self._channel.getConfiguration()
 
+
 class HausbusBackLight(HausbusLight):
     """Representation of a Haus-Bus backlight."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: LogicalButton,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: LogicalButton) -> None:
         """Set up light."""
         super().__init__(instance_id, device, channel)
 
         self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
-
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""
@@ -533,14 +476,3 @@ class HausbusBackLight(HausbusLight):
         brightness = round(brightness * 100 // 255)
         self._channel.setMinBrightness(brightness)
         self.set_light_brightness(brightness)
-
-    def handle_backlight_event(self, data: Any) -> None:
-        """Handle backlight events from HausBus."""
-        super().handle_light_event(data)
-        # backlight event handling
-        if isinstance(data, LogicalButtonConfiguration):
-            self._configuration = data
-            self._extra_state_attributes = {}
-            #self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
-            #self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
-            self._extra_state_attributes["time_base"] = data.getTimeBase()

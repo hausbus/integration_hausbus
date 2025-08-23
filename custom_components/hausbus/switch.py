@@ -5,18 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pyhausbus.de.hausbus.homeassistant.proxy.Schalter import Schalter
-from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.EvOff import (
-    EvOff as SchalterEvOff,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.EvOn import (
-    EvOn as SchalterEvOn,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.Status import (
-    Status as SchalterStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.Configuration import (
-    Configuration as SchalterConfiguration,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.EvOff import EvOff as SchalterEvOff
+from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.EvOn import EvOn as SchalterEvOn
+from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.Status import Status as SchalterStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.schalter.data.Configuration import Configuration as SchalterConfiguration
 from pyhausbus.de.hausbus.homeassistant.proxy.schalter.params.EState import EState
 
 from homeassistant.helpers import entity_platform
@@ -38,11 +30,7 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: HausbusConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
+async def async_setup_entry(hass: HomeAssistant, config_entry: HausbusConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Haus-Bus switch from a config entry."""
     gateway = config_entry.runtime_data.gateway
 
@@ -70,12 +58,7 @@ async def async_setup_entry(
 class HausbusSwitch(HausbusEntity, SwitchEntity):
     """Representation of a Haus-Bus switch."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Schalter,
-    ) -> None:
+    def __init__(self, instance_id: int, device: HausbusDevice, channel: Schalter) -> None:
         """Set up switch."""
         super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
 
@@ -105,7 +88,7 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
         params = {ATTR_ON_STATE: False}
         self.async_update_callback(**params)
 
-    def handle_switch_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle switch events from Haus-Bus."""
         if isinstance(data, SchalterEvOn):
             self.switch_turn_on()

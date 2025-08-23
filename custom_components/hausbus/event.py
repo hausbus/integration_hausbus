@@ -1,4 +1,4 @@
-"""Support for Number configuration parameters."""
+"""Support for events of haus-bus pushbuttons (Taster)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvHoldEnd import EvHol
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvClicked import EvClicked
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvDoubleClick import EvDoubleClick
 
-
 if TYPE_CHECKING:
     from . import HausbusConfigEntry
 
@@ -27,31 +26,22 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: HausbusConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up the Haus-Bus number entity from a config entry."""
+async def async_setup_entry(hass: HomeAssistant, config_entry: HausbusConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    """Set up an event entity from a config entry."""
     gateway = config_entry.runtime_data.gateway
 
     async def async_add_event(channel: HausBusEvent) -> None:
-        """Add HausbusNumber."""
+        """Add event entity."""
         async_add_entities([channel])
 
     gateway.register_platform_add_channel_callback(async_add_event, "EVENTS")
 
 
 class HausBusEvent(HausbusEntity, EventEntity):
-    """Representation of a hausbus event entity."""
+    """Representation of a haus-bus event entity."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Taster,
-    ) -> None:
-        """Set up switch."""
+    def __init__(self, instance_id: int, device: HausbusDevice, channel: Taster) -> None:
+        """Set up event."""
         super().__init__("event", instance_id, device, channel.getName())
 
         self._channel = channel
@@ -62,8 +52,9 @@ class HausBusEvent(HausbusEntity, EventEntity):
         """Check if a class_id is a Taster."""
         return class_id == Taster.CLASS_ID
 
-    def handle_taster_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle taster events from Haus-Bus."""
+
         eventType = {
               EvCovered: "button_pressed",
               EvFree: "button_released",

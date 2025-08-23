@@ -6,59 +6,25 @@ from typing import Any, TYPE_CHECKING
 from pyhausbus.ABusFeature import ABusFeature
 
 from pyhausbus.de.hausbus.homeassistant.proxy.Temperatursensor import Temperatursensor
-from pyhausbus.de.hausbus.homeassistant.proxy.temperatursensor.data.EvStatus import (
-    EvStatus as TemperatursensorEvStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.temperatursensor.data.Status import (
-    Status as TemperatursensorStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.temperatursensor.data.Configuration import (
-    Configuration as TemperaturSensorConfiguration,
-)
-
+from pyhausbus.de.hausbus.homeassistant.proxy.temperatursensor.data.EvStatus import EvStatus as TemperatursensorEvStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.temperatursensor.data.Status import Status as TemperatursensorStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.temperatursensor.data.Configuration import Configuration as TemperaturSensorConfiguration
 from pyhausbus.de.hausbus.homeassistant.proxy.PowerMeter import PowerMeter
-from pyhausbus.de.hausbus.homeassistant.proxy.powerMeter.data.Status import (
-    Status as PowerMeterStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.powerMeter.data.EvStatus import (
-    EvStatus as PowerMeterEvStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.powerMeter.data.Configuration import (
-    Configuration as PowerMeterConfiguration,
-)
-
+from pyhausbus.de.hausbus.homeassistant.proxy.powerMeter.data.Status import Status as PowerMeterStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.powerMeter.data.EvStatus import EvStatus as PowerMeterEvStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.powerMeter.data.Configuration import Configuration as PowerMeterConfiguration
 from pyhausbus.de.hausbus.homeassistant.proxy.Helligkeitssensor import Helligkeitssensor
-from pyhausbus.de.hausbus.homeassistant.proxy.helligkeitssensor.data.EvStatus import (
-    EvStatus as HelligkeitssensorEvStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.helligkeitssensor.data.Status import (
-    Status as HelligkeitssensorStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.helligkeitssensor.data.Configuration import (
-    Configuration as HelligkeitsSensorConfiguration,
-)
-
+from pyhausbus.de.hausbus.homeassistant.proxy.helligkeitssensor.data.EvStatus import EvStatus as HelligkeitssensorEvStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.helligkeitssensor.data.Status import Status as HelligkeitssensorStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.helligkeitssensor.data.Configuration import Configuration as HelligkeitsSensorConfiguration
 from pyhausbus.de.hausbus.homeassistant.proxy.Feuchtesensor import Feuchtesensor
-from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.EvStatus import (
-    EvStatus as FeuchtesensorEvStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.Status import (
-    Status as FeuchtesensorStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.Configuration import (
-    Configuration as FeuchteSensorConfiguration,
-)
-
+from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.EvStatus import EvStatus as FeuchtesensorEvStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.Status import Status as FeuchtesensorStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.feuchtesensor.data.Configuration import Configuration as FeuchteSensorConfiguration
 from pyhausbus.de.hausbus.homeassistant.proxy.AnalogEingang import AnalogEingang
-from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.EvStatus import (
-    EvStatus as AnalogEingangEvStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Status import (
-    Status as AnalogEingangStatus,
-)
-from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Configuration import (
-    Configuration as AnalogEingangConfiguration,
-)
+from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.EvStatus import EvStatus as AnalogEingangEvStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Status import Status as AnalogEingangStatus
+from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Configuration import Configuration as AnalogEingangConfiguration
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN, SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.core import HomeAssistant, callback
@@ -79,11 +45,7 @@ if TYPE_CHECKING:
     from . import HausbusConfigEntry
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: HausbusConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
+async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry,async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Haus-Bus sensor from a config entry."""
     
     gateway = config_entry.runtime_data.gateway
@@ -153,12 +115,7 @@ async def async_setup_entry(
 class HausbusSensor(HausbusEntity, SensorEntity):
     """Representation of a Haus-Bus sensor."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: ABusFeature,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: ABusFeature) -> None:
         """Set up sensor."""
         super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
 
@@ -202,12 +159,7 @@ class HausbusSensor(HausbusEntity, SensorEntity):
 class HausbusTemperaturSensor(HausbusSensor):
     """Representation of a Haus-Bus Temperatursensor."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Temperatursensor,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: Temperatursensor) -> None:
         """Set up sensor."""
         super().__init__(instance_id, device, channel)
 
@@ -215,7 +167,7 @@ class HausbusTemperaturSensor(HausbusSensor):
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_native_value = None
 
-    def handle_sensor_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle temperatur sensor events from Haus-Bus."""
         
         if isinstance(data, (TemperatursensorEvStatus,TemperatursensorStatus)):
@@ -248,12 +200,7 @@ class HausbusTemperaturSensor(HausbusSensor):
 class HausbusPowerMeter(HausbusSensor):
     """Representation of a Haus-Bus PowerMeter."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: PowerMeter,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: PowerMeter) -> None:
         """Set up sensor."""
         super().__init__(instance_id, device, channel)
 
@@ -261,7 +208,7 @@ class HausbusPowerMeter(HausbusSensor):
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_native_value = None
 
-    def handle_power_meter_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle PowerMeter events from Haus-Bus."""
         
         if isinstance(data, (PowerMeterEvStatus,PowerMeterStatus)):
@@ -295,12 +242,7 @@ class HausbusPowerMeter(HausbusSensor):
 class HausbusHelligkeitsSensor(HausbusSensor):
     """Representation of a Haus-Bus HelligkeitsSensor."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Helligkeitssensor,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: Helligkeitssensor) -> None:
         """Set up sensor."""
         super().__init__(instance_id, device, channel)
 
@@ -308,7 +250,7 @@ class HausbusHelligkeitsSensor(HausbusSensor):
         self._attr_device_class = SensorDeviceClass.ILLUMINANCE
         self._attr_native_value = None
 
-    def handle_sensor_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle helligkeits sensor events from Haus-Bus."""
         
         if isinstance(data, (HelligkeitssensorEvStatus,HelligkeitssensorStatus)):
@@ -342,12 +284,7 @@ class HausbusHelligkeitsSensor(HausbusSensor):
 class HausbusFeuchteSensor(HausbusSensor):
     """Representation of a Haus-Bus LuftfeuchteSensor."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: Feuchtesensor,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: Feuchtesensor) -> None:
         """Set up sensor."""
         super().__init__(instance_id, device, channel)
 
@@ -355,7 +292,7 @@ class HausbusFeuchteSensor(HausbusSensor):
         self._attr_device_class = SensorDeviceClass.HUMIDITY
         self._attr_native_value = None
 
-    def handle_sensor_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle Feuchtesensor events from Haus-Bus."""
         
         if isinstance(data, (FeuchtesensorEvStatus, FeuchtesensorStatus)):
@@ -388,12 +325,7 @@ class HausbusFeuchteSensor(HausbusSensor):
 class HausbusAnalogEingang(HausbusSensor):
     """Representation of a Haus-Bus analog input."""
 
-    def __init__(
-        self,
-        instance_id: int,
-        device: HausbusDevice,
-        channel: AnalogEingang,
-    ) -> None:
+    def __init__(self,instance_id: int,device: HausbusDevice,channel: AnalogEingang) -> None:
         """Set up sensor."""
         super().__init__(instance_id, device, channel)
 
@@ -401,7 +333,7 @@ class HausbusAnalogEingang(HausbusSensor):
         self._attr_device_class = None
         self._attr_native_value = None
 
-    def handle_sensor_event(self, data: Any) -> None:
+    def handle_event(self, data: Any) -> None:
         """Handle AnalogEingang events from Haus-Bus."""
         
         if isinstance(data, (AnalogEingangEvStatus, AnalogEingangStatus)):
@@ -430,3 +362,4 @@ class HausbusAnalogEingang(HausbusSensor):
           reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
           self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getUpperThreshold(), reportTimeBase,1,maxReportTime, auto_event_diff,correction,0)
           self._channel.getConfiguration()
+          

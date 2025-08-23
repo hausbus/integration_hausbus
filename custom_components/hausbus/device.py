@@ -13,15 +13,9 @@ from .const import DOMAIN
 
 
 class HausbusDevice:
-    """Common base for Haus-Bus devices."""
+    """Common base class for Haus-Bus devices."""
 
-    def __init__(
-        self,
-        device_id: str,
-        sw_version: str,
-        hw_version: str,
-        firmware_id: EFirmwareId,
-    ) -> None:
+    def __init__(self,device_id: str,sw_version: str,hw_version: str,firmware_id: EFirmwareId) -> None:
         """Set up Haus-Bus device."""
         self.device_id = device_id
         self.manufacturer = "Haus-Bus.de"
@@ -32,7 +26,6 @@ class HausbusDevice:
         self.firmware_id = firmware_id
         self.hass_device_entry = None;
 
-    """ Die DeviceInfo ist die Beschreibung, mit der ein Gerät der Registry vorgeschlagen wird."""
     @property
     def device_info(self) -> DeviceInfo:
         """Return a device description for device registry."""
@@ -46,11 +39,11 @@ class HausbusDevice:
         )
 
     def set_type(self, fcke: int) -> None:
+        """Sets electronic version to generate model_id and module name."""
         self.fcke = fcke
-        """Set device name and model_id according to device type."""
         self.model_id = Templates.get_instance().getModuleName(self.firmware_id, fcke)
         self.name = f"{self.model_id} {self.device_id}"
 
-    """ Der DeviceEntry ist das tatsächlich registrierte Gerät in der Registry mit einer eindeutigen .id, die für das Versenden von Events gebraucht wird """
     def setHassDeviceEntry(self, hass_device_entry: DeviceEntry):
+      """ Sets the hass device entry """
       self.hass_device_entry = hass_device_entry
