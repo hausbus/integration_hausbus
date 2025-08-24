@@ -13,6 +13,7 @@
   "loggers": [
     "pyhausbus"
   ],
+  "dependencies": ["light", "switch", "sensor", "binary_sensor","event", "cover", "button","number"],
   "quality_scale": "bronze",
   "requirements": [
     "pyhausbus==1.0.10"

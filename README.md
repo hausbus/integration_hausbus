@@ -1,7 +1,33 @@
-# About Haus-Bus.de
+# Haus-Bus Integration for Home Assistant
 
-[Haus-Bus.de](https://haus-bus.secure-stores.de/) is a manufacturer of smart home equipment based in Germany.
-This integration communicates to any of the Haus-Bus devices equipped with a LAN port.
+## High-Level Description
+
+[Haus-Bus.de](https://www.haus-bus.de/) is a manufacturer of smart home components based in Germany.
+This integration communicates to any of the Haus-Bus devices natively within Home assistant without communicating to any external server or cloud.
+
+The integration works on push basis to achieve optimal performance without any latence.
+
+## Supported Platforms
+- Light  
+- Switch  
+- Sensor  
+- Binary Sensor  
+- Cover  
+- Button  
+- Event  
+
+## Config Flow
+This integration supports UI config flow  
+
+1. Home Assistant → „Settings“ → „Devices and Services“ → „Add integration" → enter **Haus-Bus**   
+2. Devices are discovered and added automatically
+3. In addition a button is generated to manually start the device discovery   
+
+
+## Services
+
+### `hausbus.discover_devices`
+- Description: Manually starts a device discovery  
 
 
 ## Installation
@@ -21,10 +47,8 @@ The easiest way to install **Hausbus* is via **[HACS (Home Assistant Community S
 5. **Clear your browser cache** and reload Home Assistant.
 
 ## Supported devices
-
-Currently only switch and light based devices are supported, i.e. all relais and dimmer channels on the devices [16 channel relais](https://haus-bus.de/?showProduct=8), [12 channel relais](https://haus-bus.de/?showProduct=20), [8-channel IO-Module](https://haus-bus.de/?showProduct=6), [22-channel IO-module](https://haus-bus.de/?showProduct=5), [32-channel IO-module](https://haus-bus.de/?showProduct=2) [8-channel 230V dimmer](https://haus-bus.de/?showProduct=14), [2-channel RGB dimmer](https://haus-bus.de/?showProduct=9).
-
-The supported devices are automatically detected in the local network via UDP broadcast, upon loading the integration.
+All devices shown on www.haus-bus.de are supported by this integration.
+The devices are automatically detected in the local network via UDP broadcast, upon loading the integration.
 
 ## Debugging integration
 
@@ -36,3 +60,17 @@ logger:
   logs:
     custom_components.hausbus: debug
 ```
+
+## Removal Instructions
+
+To remove the Haus-Bus integration from Home Assistant, follow these steps:
+
+1. Go to **Settings → Devices & Integrations** in Home Assistant.
+2. Find the **Haus-Bus** integration and click **Remove**.
+3. This will:
+   - Unload all platforms (light, switch, sensor, etc.)
+   - Deregister the `hausbus.discover_devices` service
+   - Remove all Config Entries and options
+   - Clean up local device registry entries
+
+After removal, all Haus-Bus devices and settings will be fully cleaned from Home Assistant.

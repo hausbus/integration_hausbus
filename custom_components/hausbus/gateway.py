@@ -77,17 +77,15 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
 
         asyncio.run_coroutine_threadsafe(self.async_delete_devices(), self.hass.loop)
 
-    async def createDiscoveryButtonAndSearchDevices(self):
-      """Creates a Button to manually start device discovery and automatically starts discovery once"""
+    async def createDiscoveryButtonAndStartDiscovery(self):
+      """Creates a Button to manually start device discovery and starts discovery"""
 
       async def discovery_callback():
-        LOGGER.debug("searchDevices")
+        LOGGER.debug("Search devices")
         self.hass.async_add_executor_job(self.home_server.searchDevices)
 
-      _discoveryButton = HausbusButton("hausbus_discovery_button", "Discover Haus-Bus Devices", discovery_callback)
-      asyncio.run_coroutine_threadsafe(self._new_channel_listeners[BUTTON_DOMAIN](_discoveryButton), self.hass.loop)
-
-      self.hass.services.async_register(DOMAIN, "discover_devices", discovery_callback)
+      discoveryButton = HausbusButton("hausbus_discovery_button", "Discover Haus-Bus Devices", discovery_callback)
+      asyncio.run_coroutine_threadsafe(self._new_channel_listeners[BUTTON_DOMAIN](discoveryButton), self.hass.loop)
       await discovery_callback()
 
     def add_device(self, device_id: str, module: ModuleId) -> None:

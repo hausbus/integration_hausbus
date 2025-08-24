@@ -1,3 +1,9 @@
+#GLOBAL services
+discover_devices:
+  name: Discover Devices
+  description: Start a manual search for Haus-Bus devices.
+  fields: {}
+  
 #DIMMER services
 dimmer_set_brightness:
   name: Turn dimmer on with additional parameters

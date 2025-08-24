@@ -15,7 +15,7 @@ from .const import DOMAIN
 class HausbusDevice:
     """Common base class for Haus-Bus devices."""
 
-    def __init__(self,device_id: str,sw_version: str,hw_version: str,firmware_id: EFirmwareId) -> None:
+    def __init__(self, device_id: str, sw_version: str, hw_version: str, firmware_id: EFirmwareId) -> None:
         """Set up Haus-Bus device."""
         self.device_id = device_id
         self.manufacturer = "Haus-Bus.de"
@@ -35,7 +35,7 @@ class HausbusDevice:
             model=self.model_id,
             name=self.name,
             sw_version=self.software_version,
-            hw_version=self.hardware_version,
+            hw_version=self.hardware_version
         )
 
     def set_type(self, fcke: int) -> None:

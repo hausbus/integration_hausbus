@@ -5,7 +5,6 @@ from typing import Any
 from homeassistant.core import callback
 from homeassistant.helpers.entity import Entity
 from .device import HausbusDevice
-from abc import abstractmethod
 
 import logging
 LOGGER = logging.getLogger(__name__)
