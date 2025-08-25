@@ -29,14 +29,6 @@ class HausbusConfig:
 
 HausbusConfigEntry: TypeAlias = ConfigEntry[HausbusConfig]
 
-# async def device_discovery_task(hass: HomeAssistant, gateway: HausbusGateway) -> None:
-#    """Device discovery is repeated every minute."""
-#    while True:
-#        # Perform device discovery
-#        hass.async_add_executor_job(gateway.home_server.searchDevices)
-#        # Wait for 60 seconds
-#        await asyncio.sleep(60)
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> bool:
     """Set up Haus-Bus integration from a config entry."""
@@ -46,9 +38,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
     gateway = HausbusGateway(hass, entry)
     entry.runtime_data = HausbusConfig(gateway)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    # Lokale Icons für die Devices setzen
-    await set_local_device_icons(hass)
 
     # Creates a button to manually start device discovery
     hass.async_create_task(gateway.createDiscoveryButtonAndStartDiscovery())
@@ -69,6 +58,22 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
       gateway.home_server.searchDevices()
 
     hass.services.async_register(DOMAIN, "discover_devices", discover_devices)
+    
+    async def reset_service(call):
+      entries = hass.config_entries.async_entries(DOMAIN)
+      if not entries:
+        raise HomeAssistantError("No Hausbus-Gateway available")
+
+      device_id = call.data.get("device_id")
+      if not device_id:
+        raise HomeAssistantError("device_id missing")
+      
+      LOGGER.debug(f"Reset device {device_id[0]} called")
+      gateway = entries[0].runtime_data.gateway
+      gateway.resetDevice(device_id[0])
+
+    hass.services.async_register(DOMAIN, "reset_device", reset_service)
+    
     return True
 
 
@@ -81,14 +86,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> 
 
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
+async def async_remove_config_entry_device(hass, config_entry, device_entry):
+    """Handle removal of a device from the integration."""
 
-async def set_local_device_icons(hass: HomeAssistant):
-    registry: dr.DeviceRegistry = dr.async_get(hass)
-    for device_entry in registry.devices.values():
-        if device_entry.manufacturer == "Haus-Bus":
-            # device_entry.entry_type und configuration_url kann man nicht direkt ändern
-            # Stattdessen: Manuelles Override geht nur über ein DeviceUpdate
-            registry.async_update_device(
-                device_entry.id,
-                configuration_url="/local/hausbus/icon.png"
-            )
+    gateway = config_entry.runtime_data.gateway
+    
+    identifiers = device_entry.identifiers
+    for domain, device_id in identifiers:
+        if domain == DOMAIN:
+            success = await gateway.removeDevice(device_id)
+            return success
+
+    return False

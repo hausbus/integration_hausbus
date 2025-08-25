@@ -3,7 +3,14 @@ discover_devices:
   name: Discover Devices
   description: Start a manual search for Haus-Bus devices.
   fields: {}
-  
+
+reset_device:
+  name: Reset Device
+  description: Resets a device controller
+  target:
+    device:
+      integration: hausbus
+        
 #DIMMER services
 dimmer_set_brightness:
   name: Turn dimmer on with additional parameters
