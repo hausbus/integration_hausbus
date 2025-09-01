@@ -74,23 +74,23 @@ async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry
     )
 
     platform.async_register_entity_service(
-      "helligkeits_sensor_set_configuration",
+      "brightness_sensor_set_configuration",
       {
         vol.Required("correction", default=0): vol.All(vol.Coerce(int), vol.Range(min=-100, max=100)),
         vol.Required("auto_event_diff", default=30): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         vol.Required("manual_event_interval", default="5 minutes"): vol.In(["1 second","5 seconds","10 seconds","30 seconds","1 minute","5 minutes","10 minutes","20 minutes","30 minutes","60 minutes"]),
       },
-      "async_helligkeits_sensor_set_configuration",
+      "async_brightness_sensor_set_configuration",
     )
 
     platform.async_register_entity_service(
-      "feuchte_sensor_set_configuration",
+      "humidity_sensor_set_configuration",
       {
         vol.Required("correction", default=0): vol.All(vol.Coerce(float), vol.Range(min=-100, max=100)),
         vol.Required("auto_event_diff", default=1): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100)),
         vol.Required("manual_event_interval", default="5 minutes"): vol.In(["1 second","5 seconds","10 seconds","30 seconds","1 minute","5 minutes","10 minutes","20 minutes","30 minutes","60 minutes"]),
       },
-      "async_feuchte_sensor_set_configuration",
+      "async_humidity_sensor_set_configuration",
     )
 
     platform.async_register_entity_service(
@@ -115,11 +115,10 @@ async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry
 class HausbusSensor(HausbusEntity, SensorEntity):
     """Representation of a Haus-Bus sensor."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: ABusFeature) -> None:
+    def __init__(self, channel: ABusFeature, device: HausbusDevice) -> None:
         """Set up sensor."""
-        super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
+        super().__init__(channel, device)
 
-        self._channel = channel
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_value = None
 
@@ -159,9 +158,9 @@ class HausbusSensor(HausbusEntity, SensorEntity):
 class HausbusTemperaturSensor(HausbusSensor):
     """Representation of a Haus-Bus Temperatursensor."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: Temperatursensor) -> None:
+    def __init__(self, channel: Temperatursensor, device: HausbusDevice) -> None:
         """Set up sensor."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -178,34 +177,32 @@ class HausbusTemperaturSensor(HausbusSensor):
         elif isinstance(data, TemperaturSensorConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes["correction"] = data.getCalibration()/10
-            self._extra_state_attributes["auto_event_diff"] = data.getHysteresis()/10
-            self._extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes["correction"] = data.getCalibration()/10
+            self._attr_extra_state_attributes["auto_event_diff"] = data.getHysteresis()/10
+            self._attr_extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     @callback
     async def async_temperatur_sensor_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
         """Setzt die Konfiguration eines Temperatursensors."""
         LOGGER.debug(f"async_temperatur_sensor_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
 
-        if not self._configuration:
-          LOGGER.debug(f"reading missing configuration")
-          self._channel.getConfiguration()
-          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
-        else:
-          reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
-          self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getLowerThresholdFraction(), self._configuration.getUpperThreshold(), self._configuration.getUpperThresholdFraction(),reportTimeBase,1,maxReportTime, int(auto_event_diff*10),int(correction*10),0)
-          self._channel.getConfiguration()
+        if not await self.ensure_configuration():
+          raise HomeAssistantError("Configuration could not be read. Please repeat command.")
+        
+        reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
+        self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getLowerThresholdFraction(), self._configuration.getUpperThreshold(), self._configuration.getUpperThresholdFraction(),reportTimeBase,1,maxReportTime, int(auto_event_diff*10),int(correction*10),0)
+        self._channel.getConfiguration()
 
 class HausbusPowerMeter(HausbusSensor):
     """Representation of a Haus-Bus PowerMeter."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: PowerMeter) -> None:
+    def __init__(self, channel: PowerMeter, device: HausbusDevice) -> None:
         """Set up sensor."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
         self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
-        self._attr_device_class = SensorDeviceClass.CURRENT
+        self._attr_device_class = SensorDeviceClass.POWER
         self._attr_native_value = None
 
     def handle_event(self, data: Any) -> None:
@@ -219,39 +216,37 @@ class HausbusPowerMeter(HausbusSensor):
         elif isinstance(data, PowerMeterConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes["correction"] = data.getCalibration()/10
-            self._extra_state_attributes["auto_event_diff"] = data.getHysteresis()/10
-            self._extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes["correction"] = data.getCalibration()/10
+            self._attr_extra_state_attributes["auto_event_diff"] = data.getHysteresis()/10
+            self._attr_extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     @callback
     async def async_power_meter_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
         """Setzt die Konfiguration eines LogicalButton."""
         LOGGER.debug(f"async_power_meter_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
 
-        if not self._configuration:
-          LOGGER.debug(f"reading missing configuration")
-          self._channel.getConfiguration()
-          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
-        else:
-          reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
-          self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getLowerThresholdFraction(), self._configuration.getUpperThreshold(), self._configuration.getUpperThresholdFraction(),reportTimeBase,1,maxReportTime, int(auto_event_diff*10),int(correction*10),0)
-          self._channel.getConfiguration()
+        if not await self.ensure_configuration():
+          raise HomeAssistantError("Configuration could not be read. Please repeat command.")
+
+        reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
+        self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getLowerThresholdFraction(), self._configuration.getUpperThreshold(), self._configuration.getUpperThresholdFraction(),reportTimeBase,1,maxReportTime, int(auto_event_diff*10),int(correction*10),0)
+        self._channel.getConfiguration()
 
 
-class HausbusHelligkeitsSensor(HausbusSensor):
+class HausbusBrightnessSensor(HausbusSensor):
     """Representation of a Haus-Bus HelligkeitsSensor."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: Helligkeitssensor) -> None:
+    def __init__(self, channel: Helligkeitssensor, device: HausbusDevice) -> None:
         """Set up sensor."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
         self._attr_native_unit_of_measurement = LIGHT_LUX
         self._attr_device_class = SensorDeviceClass.ILLUMINANCE
         self._attr_native_value = None
 
     def handle_event(self, data: Any) -> None:
-        """Handle helligkeits sensor events from Haus-Bus."""
+        """Handle brightness sensor events from Haus-Bus."""
         
         if isinstance(data, (HelligkeitssensorEvStatus,HelligkeitssensorStatus)):
           value = float(data.getBrightness())
@@ -261,39 +256,37 @@ class HausbusHelligkeitsSensor(HausbusSensor):
         elif isinstance(data, HelligkeitsSensorConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes["correction"] = data.getCalibration()*10
-            self._extra_state_attributes["auto_event_diff"] = data.getHysteresis()*10
-            self._extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes["correction"] = data.getCalibration()*10
+            self._attr_extra_state_attributes["auto_event_diff"] = data.getHysteresis()*10
+            self._attr_extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     @callback
-    async def async_helligkeits_sensor_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
+    async def async_brightness_sensor_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
         """Setzt die Konfiguration eines Helligkeitssensors."""
-        LOGGER.debug(f"async_helligkeits_sensor_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
+        LOGGER.debug(f"async_brightness_sensor_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
 
-        if not self._configuration:
-          LOGGER.debug(f"reading missing configuration")
-          self._channel.getConfiguration()
-          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
-        else:
-          reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
-          self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getUpperThreshold(), reportTimeBase,1,maxReportTime, int(auto_event_diff/10),int(correction/10),0)
-          self._channel.getConfiguration()
+        if not await self.ensure_configuration():
+          raise HomeAssistantError("Configuration could not be read. Please repeat command.")
+
+        reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
+        self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getUpperThreshold(), reportTimeBase,1,maxReportTime, int(auto_event_diff/10),int(correction/10),0)
+        self._channel.getConfiguration()
           
 
-class HausbusFeuchteSensor(HausbusSensor):
-    """Representation of a Haus-Bus LuftfeuchteSensor."""
+class HausbusHumiditySensor(HausbusSensor):
+    """Representation of a Haus-Bus humidity sensor."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: Feuchtesensor) -> None:
+    def __init__(self, channel: Feuchtesensor, device: HausbusDevice) -> None:
         """Set up sensor."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_device_class = SensorDeviceClass.HUMIDITY
         self._attr_native_value = None
 
     def handle_event(self, data: Any) -> None:
-        """Handle Feuchtesensor events from Haus-Bus."""
+        """Handle humidity sensor events from Haus-Bus."""
         
         if isinstance(data, (FeuchtesensorEvStatus, FeuchtesensorStatus)):
           value = float(data.getRelativeHumidity()) + float(data.getCentiHumidity()) / 100
@@ -303,31 +296,29 @@ class HausbusFeuchteSensor(HausbusSensor):
         elif isinstance(data, FeuchteSensorConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes["correction"] = data.getCalibration()/10
-            self._extra_state_attributes["auto_event_diff"] = data.getHysteresis()/10
-            self._extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes["correction"] = data.getCalibration()/10
+            self._attr_extra_state_attributes["auto_event_diff"] = data.getHysteresis()/10
+            self._attr_extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     @callback
-    async def async_feuchte_sensor_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
-        """Setzt die Konfiguration eines Feuchtesensors."""
-        LOGGER.debug(f"async_feuchte_sensor_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
+    async def async_humidity_sensor_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
+        """sets configuration of a humidity sensor"""
+        LOGGER.debug(f"async_humidity_sensor_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
 
-        if not self._configuration:
-          LOGGER.debug(f"reading missing configuration")
-          self._channel.getConfiguration()
-          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
-        else:
-          reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
-          self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getLowerThresholdFraction(), self._configuration.getUpperThreshold(), self._configuration.getUpperThresholdFraction(),reportTimeBase,1,maxReportTime, int(auto_event_diff*10),int(correction*10),0)
-          self._channel.getConfiguration()
+        if not await self.ensure_configuration():
+          raise HomeAssistantError("Configuration could not be read. Please repeat command.")
+        
+        reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
+        self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getLowerThresholdFraction(), self._configuration.getUpperThreshold(), self._configuration.getUpperThresholdFraction(),reportTimeBase,1,maxReportTime, int(auto_event_diff*10),int(correction*10),0)
+        self._channel.getConfiguration()
           
 class HausbusAnalogEingang(HausbusSensor):
     """Representation of a Haus-Bus analog input."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: AnalogEingang) -> None:
+    def __init__(self, channel: AnalogEingang, device: HausbusDevice) -> None:
         """Set up sensor."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
         self._attr_native_unit_of_measurement = None
         self._attr_device_class = None
@@ -344,22 +335,20 @@ class HausbusAnalogEingang(HausbusSensor):
         elif isinstance(data, AnalogEingangConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes["correction"] = data.getCalibration()
-            self._extra_state_attributes["auto_event_diff"] = data.getHysteresis()
-            self._extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes["correction"] = data.getCalibration()
+            self._attr_extra_state_attributes["auto_event_diff"] = data.getHysteresis()
+            self._attr_extra_state_attributes["manual_event_interval"] = HausbusSensor.getTimeIntervalMapping(data.getReportTimeBase()*data.getMaxReportTime())
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     @callback
     async def async_analog_eingang_set_configuration(self, correction: float, auto_event_diff:float, manual_event_interval:str):
         """Setzt die Konfiguration eines Analogeingangs."""
         LOGGER.debug(f"async_analog_eingang_set_configuration correction {correction}, auto_event_diff {auto_event_diff}, manual_event_interval {manual_event_interval}")
 
-        if not self._configuration:
-          LOGGER.debug(f"reading missing configuration")
-          self._channel.getConfiguration()
-          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
-        else:
-          reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
-          self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getUpperThreshold(), reportTimeBase,1,maxReportTime, auto_event_diff,correction,0)
-          self._channel.getConfiguration()
+        if not await self.ensure_configuration():
+          raise HomeAssistantError("Configuration could not be read. Please repeat command.")
+        
+        reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
+        self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getUpperThreshold(), reportTimeBase,1,maxReportTime, auto_event_diff,correction,0)
+        self._channel.getConfiguration()
           

@@ -38,6 +38,33 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: HausbusConfigEntr
     platform = entity_platform.async_get_current_platform()
 
     platform.async_register_entity_service(
+        "switch_off",
+        {
+            vol.Required("offDelay", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        },
+        "async_switch_off",
+    )
+
+    platform.async_register_entity_service(
+        "switch_on",
+        {
+            vol.Required("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+            vol.Optional("onDelay", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        },
+        "async_switch_on",
+    )
+
+    platform.async_register_entity_service(
+        "switch_toggle",
+        {
+            vol.Required("offTime", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Required("onTime", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
+            vol.Optional("quantity", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+        },
+        "async_switch_toggle",
+    )
+
+    platform.async_register_entity_service(
         "switch_set_configuration",
         {
             vol.Required("max_on_time", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
@@ -58,11 +85,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: HausbusConfigEntr
 class HausbusSwitch(HausbusEntity, SwitchEntity):
     """Representation of a Haus-Bus switch."""
 
-    def __init__(self, instance_id: int, device: HausbusDevice, channel: Schalter) -> None:
+    def __init__(self, channel: Schalter, device: HausbusDevice) -> None:
         """Set up switch."""
-        super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
+        super().__init__(channel, device)
 
-        self._channel = channel
         self._attr_is_on = False
 
     @staticmethod
@@ -101,10 +127,10 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
             self.switch_turn_off()
         elif isinstance(data, SchalterConfiguration):
             self._configuration = data
-            self._extra_state_attributes = {}
-            self._extra_state_attributes["max_on_time"] = data.getMaxOnTime()
-            self._extra_state_attributes["off_delay_time"] = data.getOffDelayTime()
-            self._extra_state_attributes["time_base"] = data.getTimeBase()
+            self._attr_extra_state_attributes["max_on_time"] = data.getMaxOnTime()
+            self._attr_extra_state_attributes["off_delay_time"] = data.getOffDelayTime()
+            self._attr_extra_state_attributes["time_base"] = data.getTimeBase()
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     @callback
     def async_update_callback(self, **kwargs: Any) -> None:
@@ -116,6 +142,24 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
 
         if state_changed:
             self.schedule_update_ha_state()
+
+    @callback
+    async def async_switch_off(self, offDelay:int):
+        """Switches a relay with the given off delay time"""
+        LOGGER.debug(f"async_switch_off offDelay {offDelay}")
+        self._channel.off(offDelay)
+
+    @callback
+    async def async_switch_on(self, duration:int, onDelay:int):
+        """Switches a relay for given duration and on delay time"""
+        LOGGER.debug(f"async_switch_on duration {duration}, onDelay {onDelay}")
+        self._channel.on(duration, onDelay)
+
+    @callback
+    async def async_switch_toggle(self, offTime:int, onTime:int, quantity:int):
+        """Toggels a relay with interval with given off and on time and quantity"""
+        LOGGER.debug(f"async_switch_toggle offTime {offTime}, onTime {onTime}, quantity {quantity}")
+        self._channel.toggle(offTime, onTime, quantity)
 
     @callback
     async def async_switch_set_configuration(self, max_on_time:int, off_delay_time:int, time_base:int):

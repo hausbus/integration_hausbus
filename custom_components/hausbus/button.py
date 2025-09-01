@@ -1,14 +1,13 @@
-"""Support for UI Buttons."""
+"""Representation of a Haus-Bus UI button."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from collections.abc import Callable, Coroutine
-
+from collections.abc import Awaitable, Callable
 
 if TYPE_CHECKING:
     from . import HausbusConfigEntry
@@ -17,7 +16,7 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry,async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(hass: HomeAssistant, config_entry: HausbusConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up a button from a config entry."""
     gateway = config_entry.runtime_data.gateway
 
@@ -31,8 +30,9 @@ async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry
 class HausbusButton(ButtonEntity):
     """Representation of a button."""
 
-    def __init__(self,unique_id:str,name:str,callback: Callable[[],Coroutine[Any, Any, None]]) -> None:
+    def __init__(self, unique_id:str, name:str, callback: Callable[[], Awaitable[None]]) -> None:
         """Set up button."""
+        super().__init__()
 
         self._attr_has_entity_name = True
         self._attr_unique_id = unique_id
@@ -42,4 +42,7 @@ class HausbusButton(ButtonEntity):
     async def async_press(self) -> None:
         """Is called if a button is pressed."""
         LOGGER.debug(f"button pressed {self._attr_name}")
-        await self._callback()
+        try:
+          await self._callback()
+        except Exception as err:  # noqa: BLE001
+          LOGGER.error("Error executing button %s: %s", self._attr_name, err, exc_info=True)

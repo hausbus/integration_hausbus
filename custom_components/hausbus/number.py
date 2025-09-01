@@ -35,7 +35,12 @@ class HausBusNumber(HausbusEntity, NumberEntity):
 
     def __init__(self, entity: HausbusEntity) -> None:
         """Set up hausbus number."""
-        super().__init__(f"{entity._type}_config", entity._instance_id, entity._device, f"{entity._attr_name}_testParameter")
+        super().__init__(None, entity._device)
+
+        self._type = f"{entity._type}_config"
+        self._attr_name = f"{entity._attr_name}_testParameter"
+        self._attr_unique_id = f"{self._device.device_id}-{self._type}-{self._attr_name}"
+        
         self.entity = entity
         self._attr_entity_category = EntityCategory.CONFIG
         self._attr_native_min_value = 0.0

@@ -39,7 +39,7 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
     def remove_bus_event_listeners(self) -> None:
         """Cleanup after finishing the config flow."""
         self.home_server.removeBusEventListener(self)
-        self.home_server.removeBusEventListener(self.home_server)
+        #self.home_server.removeBusEventListener(self.home_server)
 
     def async_remove(self) -> None:
         """Trigger cleanup of bus event listeners after config flow."""

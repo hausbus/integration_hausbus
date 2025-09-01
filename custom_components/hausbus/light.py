@@ -92,9 +92,9 @@ async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry
     platform.async_register_entity_service(
         "rgb_set_color",
         {
-            vol.Required("brightnessRed", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("brightnessGreen", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-            vol.Required("brightnessBlue", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightness_red", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightness_green", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            vol.Required("brightness_blue", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
             vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
         },
         "async_rgb_set_color",
@@ -162,14 +162,26 @@ async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry
 class HausbusLight(HausbusEntity, LightEntity):
     """Representation of a Haus-Bus light."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: ABusFeature) -> None:
+    def __init__(self, channel: ABusFeature, device: HausbusDevice) -> None:
         """Set up light."""
-        super().__init__(channel.__class__.__name__, instance_id, device, channel.getName())
+        super().__init__(channel, device)
 
         self._attr_is_on = False
         self._attr_brightness = 255
         self._attr_hs_color = (0, 0)
 
+    @staticmethod
+    def percent_to_ha_brightness(percent: float) -> int:
+      """Convert 0–100% to HA brightness (0–255)."""
+      percent = max(0.0, min(100.0, percent))  # clamp
+      return round(percent * 255 / 100)
+
+    @staticmethod
+    def ha_brightness_to_percent(brightness: int) -> float:
+      """Convert HA brightness (0–255) to 0–100%."""
+      brightness = max(0, min(255, brightness))  # clamp
+      return round(brightness * 100 / 255)
+  
     @staticmethod
     def is_light_channel(class_id: int) -> bool:
         """Check if a class_id is a light."""
@@ -231,11 +243,10 @@ class HausbusLight(HausbusEntity, LightEntity):
 class HausbusDimmerLight(HausbusLight):
     """Representation of a Haus-Bus dimmer."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: Dimmer) -> None:
+    def __init__(self,channel: Dimmer, device: HausbusDevice) -> None:
         """Set up light."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
-        self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
         # Falls später mal Konfigurationen in der DeviceInfo einstellbar sein sollen, hier welche erstellen
@@ -266,19 +277,18 @@ class HausbusDimmerLight(HausbusLight):
         elif isinstance(data, DimmerConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes = {}
             hbDimmerMode = {
               DimmerMode.DIMM_CR: "dim_trailing_edge",
               DimmerMode.DIMM_L:"dim_leading_edge" ,
               DimmerMode.SWITCH:"switch_only" ,
             }.get(data.getMode(), "switch_only")
 
-            self._extra_state_attributes["mode"] = hbDimmerMode
-            self._extra_state_attributes["dimming_time"] = data.getFadingTime()
-            self._extra_state_attributes["ramp_time"] = data.getDimmingTime()
-            self._extra_state_attributes["dimming_start_brightness"] = data.getDimmingRangeStart()
-            self._extra_state_attributes["dimming_end_brightness"] = data.getDimmingRangeEnd()
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes["mode"] = hbDimmerMode
+            self._attr_extra_state_attributes["dimming_time"] = data.getFadingTime()
+            self._attr_extra_state_attributes["ramp_time"] = data.getDimmingTime()
+            self._attr_extra_state_attributes["dimming_start_brightness"] = data.getDimmingRangeStart()
+            self._attr_extra_state_attributes["dimming_end_brightness"] = data.getDimmingRangeEnd()
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     async def async_dimmer_set_brightness(self, brightness: int, duration:int):
         """Setzt eine Helligkeit mit einer Dauer."""
@@ -317,11 +327,10 @@ class HausbusDimmerLight(HausbusLight):
 class HausbusRGBDimmerLight(HausbusLight):
     """Representation of a Haus-Bus RGB dimmer."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: RGBDimmer) -> None:
+    def __init__(self, channel: RGBDimmer, device: HausbusDevice) -> None:
         """Set up light."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
-        self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.HS}
         self._attr_color_mode = ColorMode.HS
 
@@ -364,14 +373,14 @@ class HausbusRGBDimmerLight(HausbusLight):
         elif isinstance(data, rGBConfiguration):
             self._configuration = data
 
-            self._extra_state_attributes = {}
-            self._extra_state_attributes["dimming_time"] = data.getFadingTime()
-            LOGGER.debug(f"_extra_state_attributes {self._extra_state_attributes}")
+            self._attr_extra_state_attributes = {}
+            self._attr_extra_state_attributes["dimming_time"] = data.getFadingTime()
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
-    async def async_rgb_set_color(self, brightnessRed: int, brightnessGreen: int, brightnessBlue: int, duration: int):
+    async def async_rgb_set_color(self, brightness_red: int, brightness_green: int, brightness_blue: int, duration: int):
       """Schaltet ein RGB Licht mit einer Dauer ein."""
-      LOGGER.debug(f"async_rgb_set_color brightnessRed {brightnessRed}, brightnessGreen {brightnessGreen}, brightnessBlue {brightnessBlue}, duration {duration}")
-      self._channel.setColor(brightnessRed, brightnessGreen, brightnessBlue, duration)
+      LOGGER.debug(f"async_rgb_set_color brightnessRed {brightness_red}, brightnessGreen {brightness_green}, brightnessBlue {brightness_blue}, duration {duration}")
+      self._channel.setColor(brightness_red, brightness_green, brightness_blue, duration)
 
     @callback
     async def async_rgb_set_configuration(self, dimming_time:int):
@@ -384,11 +393,10 @@ class HausbusRGBDimmerLight(HausbusLight):
 class HausbusLedLight(HausbusLight):
     """Representation of a Haus-Bus LED."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: Led) -> None:
+    def __init__(self, channel: Led, device: HausbusDevice) -> None:
         """Set up light."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
-        self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
 
@@ -415,10 +423,10 @@ class HausbusLedLight(HausbusLight):
                 self.light_turn_off()
         elif isinstance(data, LedConfiguration):
             self._configuration = data
-            self._extra_state_attributes = {}
             # self._extra_state_attributes["dimm_offset"] = data.getDimmOffset()
             # self._extra_state_attributes["min_brightness"] = data.getMinBrightness()
-            self._extra_state_attributes["time_base"] = data.getTimeBase()
+            self._attr_extra_state_attributes["time_base"] = data.getTimeBase()
+            LOGGER.debug(f"_attr_extra_state_attributes {self._attr_extra_state_attributes}")
 
     # SERVICES
     async def async_led_off(self, offDelay: int):
@@ -445,23 +453,21 @@ class HausbusLedLight(HausbusLight):
     async def async_led_set_configuration(self, time_base:int):
         """Setzt die Konfiguration einer Led."""
         LOGGER.debug(f"async_led_set_configuration time_base {time_base}")
-        if not self._configuration:
-          LOGGER.debug(f"reading missing configuration")
-          self._channel.getConfiguration()
-          raise HomeAssistantError(f"Configuration needed update. Please repeat configuration")
-        else:
-          self._channel.setConfiguration(self._configuration.getDimmOffset(), self._configuration.getMinBrightness(), time_base, self._configuration.getOptions())
-          self._channel.getConfiguration()
+        
+        if not await self.ensure_configuration():
+          raise HomeAssistantError("Configuration could not be read. Please repeat command.")
+
+        self._channel.setConfiguration(self._configuration.getDimmOffset(), self._configuration.getMinBrightness(), time_base, self._configuration.getOptions())
+        self._channel.getConfiguration()
 
 
 class HausbusBackLight(HausbusLight):
     """Representation of a Haus-Bus backlight."""
 
-    def __init__(self,instance_id: int,device: HausbusDevice,channel: LogicalButton) -> None:
+    def __init__(self, channel: LogicalButton, device: HausbusDevice) -> None:
         """Set up light."""
-        super().__init__(instance_id, device, channel)
+        super().__init__(channel, device)
 
-        self._channel = channel
         self._attr_supported_color_modes: set[ColorMode] = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
 

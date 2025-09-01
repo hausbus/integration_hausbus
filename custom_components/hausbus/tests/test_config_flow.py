@@ -10,8 +10,8 @@ import pytest
 import asyncio
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_USER
-from hausbus.const import DOMAIN
-from hausbus.config_flow import ConfigFlow
+#from hausbus.const import DOMAIN
+from .config_flow import ConfigFlow
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from unittest.mock import AsyncMock, MagicMock, patch
 

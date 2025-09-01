@@ -41,7 +41,7 @@ dimmer_set_brightness:
         number:
           min: 0
           max: 65535
-          unit_of_measurement: "s"
+          unit_of_measurement: s
 
 dimmer_start_ramp:
   target:
@@ -144,7 +144,7 @@ rgb_set_color:
     entity:
       domain: light
   fields:
-    brightnessRed:
+    brightness_red:
       name: Brightness red
       description: Brightness for color red in percent (0-100)
       required: true
@@ -156,7 +156,7 @@ rgb_set_color:
           max: 100
           unit_of_measurement: "%"
           mode: slider
-    brightnessGreen:
+    brightness_green:
       name: Brightness green
       description: Brightness for color green in percent (0-100)
       required: true
@@ -168,7 +168,7 @@ rgb_set_color:
           max: 100
           unit_of_measurement: "%"
           mode: slider          
-    brightnessBlue:
+    brightness_blue:
       name: Brightness blue
       description: Brightness for color blue in percent (0-100)
       required: true
@@ -190,7 +190,7 @@ rgb_set_color:
         number:
           min: 0
           max: 65535
-          unit_of_measurement: "s"
+          unit_of_measurement: s
 
 rgb_set_configuration:
   target:
@@ -228,7 +228,7 @@ led_off:
         number:
           min: 0
           max: 65535
-          unit_of_measurement: "s"    
+          unit_of_measurement: s   
       
 led_on:
   name: Switch LED on with additional parameters
@@ -259,7 +259,7 @@ led_on:
         number:
           min: 0
           max: 65535
-          unit_of_measurement: "s"
+          unit_of_measurement: s
     onDelay:
       name: OnDelay
       description: delay in seconds before switching on
@@ -270,7 +270,7 @@ led_on:
         number:
           min: 0
           max: 65535
-          unit_of_measurement: "s"
+          unit_of_measurement: s
 
 led_blink:
   name: Lets a led blink with additional parameters
@@ -470,7 +470,7 @@ power_meter_sensor_set_configuration:
             - "60 minutes"
 
 # Brightness sensor services
-helligkeits_sensor_set_configuration:
+brightness_sensor_set_configuration:
   target:
     entity:
       domain: sensor
@@ -524,7 +524,7 @@ helligkeits_sensor_set_configuration:
             - "60 minutes"
 
 # Feuchtigkeitssensor services
-feuchte_sensor_set_configuration:
+humidity_sensor_set_configuration:
   target:
     entity:
       domain: sensor
@@ -630,6 +630,85 @@ analog_eingang_set_configuration:
             - "60 minutes"
             
 # Schalter Services
+switch_off:
+  target:
+    entity:
+      domain: switch
+  name: Switch off after delay
+  description: Switches a relay with the given off delay time
+  fields:
+    offDelay:
+      name: Delay before the switch is switched off
+      description: If configured greater than 0 the switch disables after the given time.
+      required: true
+      default: 0
+      example: 600
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: slider
+
+switch_on:
+  target:
+    entity:
+      domain: switch
+  name: Switch on after delay
+  description: Switches a relay for given duration and on delay time
+  fields:
+    onDelay:
+      name: Delay before the switch is switched on
+      description: If configured greater than 0 the switch disables after the given time.
+      required: true
+      default: 0
+      example: 600
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: slider
+
+switch_toggle:
+  target:
+    entity:
+      domain: switch
+  name: Toggle relay with interval
+  description: Toggels a relay with interval with given off and on time and quantity
+  fields:
+    offTime:
+      name: offTime
+      description: Duration the relay is off in the toggle period
+      required: true
+      default: 1
+      example: 10
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    onTime:
+      name: onTime
+      description: Duration the relay is on in the toggle period
+      required: true
+      default: 1
+      example: 10
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    quantity:
+      name: quantity
+      description: Number of toggle times. 0 means forever
+      required: false
+      default: 0
+      example: 10
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+
 switch_set_configuration:
   target:
     entity:
@@ -677,7 +756,7 @@ cover_toggle:
     entity:
       domain: cover
   name: Toggle direction
-  description: Starts the cover in the oposite direction than last time
+  description: Starts the cover in the opposite direction than last time
 
 cover_set_configuration:
   target:
@@ -716,3 +795,140 @@ cover_set_configuration:
       example: False
       selector:
         boolean:
+
+# Taster Services
+push_button_configure_events:
+  target:
+    entity:
+      domain: event
+  name: Disable oder enable input events
+  description: Disables all events from this input for the given time or activates them again.
+  fields:
+    eventActivationStatus:
+      name: Disable or enable
+      description: DISABLED to disable all events, ENABLED to enable them again, INVERT to invert the actual status
+      required: true
+      default: "ENABLED"
+      example: "ENABLED"
+      selector:
+        select:
+          options:
+            - "ENABLED"
+            - "DISABLED"
+            - "INVERT"
+    disabled_duration:
+      name: Time events remain disabled
+      description: Events remain disabled for the given time or forever if configured to 0
+      required: true
+      default: 0
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+          
+push_button_set_configuration:
+  target:
+    entity:
+      domain: event
+  name: Configure input
+  description: Configured all parameters for the input 
+  fields:
+    hold_timeout:
+      name: Button hold start time 
+      description: Duration a push button has to be pressed to generate button_hold_start event if active
+      required: true
+      default: 100
+      example: 100
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    double_click_timeout:
+      name: Button double click time out
+      description: Within this time a push button has to be clicked again to generate button_double_clicked event if active
+      required: true
+      default: 50
+      example: 50
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+    event_button_pressed_active:
+      name: Enables or disables event button_pressed
+      description: True if a push button shall send event button_pressed
+      required: true
+      default: True
+      example: True
+      selector:
+        boolean:
+    event_button_released_active:
+      name: Enables or disables event button_released
+      description: True if a push button shall send event button_released
+      required: true
+      default: True
+      example: True
+      selector:
+        boolean:
+    event_button_hold_start_active:
+      name: Enables or disables event button_hold_start
+      description: True if a push button shall send event button_hold_start
+      required: true
+      default: False
+      example: False
+      selector:
+        boolean:
+    event_button_hold_end_active:
+      name: Enables or disables event button_hold_end
+      description: True if a push button shall send event button_hold_end
+      required: true
+      default: False
+      example: False
+      selector:
+        boolean:
+    event_button_clicked_active:
+      name: Enables or disables event button_clicked
+      description: True if a push button shall send event button_clicked.
+      required: true
+      default: False
+      example: False
+      selector:
+        boolean:
+    event_button_double_clicked_active:
+      name: Enables or disables event button_double_clicked
+      description: True if a push button shall send event button_double_clicked. Please note that event button_clicked is delayed for this time to device if it was a double click
+      required: true
+      default: False
+      example: False
+      selector:
+        boolean:
+    led_feedback_active:
+      name: Enables or disables led feedback
+      description: True means that the led of a haus-bus multitaster automatically indicates a pressed button 
+      required: true
+      default: True
+      example: True
+      selector:
+        boolean:
+    inverted:
+      name: Inverts this input
+      description: True if the logic of this input is to be inverted 
+      required: true
+      default: False
+      example: False
+      selector:
+        boolean:
+    debounce_time:
+      name: Configured debounce time of this input
+      description: If a push button is connected to this input the debounce time should be configured to 40. If a sensor with a high frequence signal is connected it should be reduced to 10. 
+      required: true
+      default: 40
+      example: 40
+      selector:
+        number:
+          min: 1
+          max: 254
+          mode: slider

@@ -24,7 +24,7 @@ class HausbusDevice:
         self.software_version = sw_version
         self.hardware_version = hw_version
         self.firmware_id = firmware_id
-        self.hass_device_entry = None;
+        self.hass_device_entry = None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -44,6 +44,6 @@ class HausbusDevice:
         self.model_id = Templates.get_instance().getModuleName(self.firmware_id, fcke)
         self.name = f"{self.model_id} {self.device_id}"
 
-    def setHassDeviceEntry(self, hass_device_entry: DeviceEntry):
+    def set_hass_device_entry(self, hass_device_entry: DeviceEntry):
       """ Sets the hass device entry """
       self.hass_device_entry = hass_device_entry
