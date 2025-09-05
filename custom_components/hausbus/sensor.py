@@ -123,11 +123,6 @@ class HausbusSensor(HausbusEntity, SensorEntity):
         self._attr_native_value = None
 
     @staticmethod
-    def is_sensor_channel(class_id: int) -> bool:
-        """Check if a class_id is a sensor."""
-        return class_id in (Temperatursensor.CLASS_ID, Helligkeitssensor.CLASS_ID, Feuchtesensor.CLASS_ID, AnalogEingang.CLASS_ID, PowerMeter.CLASS_ID)
-
-    @staticmethod
     def getTimeIntervalMapping(key):
         """Lookup-Funktion, die zu einem Internal Base und Value liefert oder zum Tupel den Value"""
     

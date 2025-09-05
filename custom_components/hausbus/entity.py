@@ -44,6 +44,7 @@ class HausbusEntity(Entity):
         self._attr_translation_key = self._type
         self._attr_extra_state_attributes = {}
         self._configuration = {}
+        self._special_type = device.special_type
 
     def get_hardware_status(self) -> None:
         """Request status and configuration of this channel from hardware."""
@@ -63,6 +64,8 @@ class HausbusEntity(Entity):
       """Called when entity is added to HA."""
       registry = er.async_get(self.hass)
       registry.async_update_entity_options(self.entity_id, DOMAIN, {"hausbus_type": self.__class__.__name__})
+      if self._special_type!=0:
+        registry.async_update_entity_options(self.entity_id, DOMAIN, {"hausbus_special_type": self._special_type})
 
     async def ensure_configuration(self) -> bool:
       """ensures that the channel configuration is known"""

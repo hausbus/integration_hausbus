@@ -34,9 +34,10 @@ async def async_get_actions(hass: HomeAssistant, device_id: str):
     for ent in entities:
       if DOMAIN in ent.options:
         hausbus_type = ent.options[DOMAIN].get("hausbus_type")
+        hausbus_special_type = ent.options[DOMAIN].get("hausbus_special_type")
         name = ent.name or ent.original_name
 
-        _LOGGER.debug(f"{name} is type {hausbus_type}")
+        _LOGGER.debug(f"{name} is type {hausbus_type} special_type {hausbus_special_type}")
 
         if hausbus_type == "HausbusDimmerLight":
           addAction("dimmer_set_brightness", name, device_id, ent.entity_id, actions)
@@ -57,6 +58,10 @@ async def async_get_actions(hass: HomeAssistant, device_id: str):
           addAction("cover_toggle", name, device_id, ent.entity_id, actions)
         elif hausbus_type == "HausbusEvent" or hausbus_type == "HausbusBinarySensor":
           addAction("push_button_configure_events", name, device_id, ent.entity_id, actions)
+        
+        #if hausbus_special_type == 1:
+        #  addAction("ssr_control", name, device_id, ent.entity_id, actions)
+            
 
     _LOGGER.debug(f"async_get_actions for {device_id} returns {actions}")
     return actions
@@ -96,8 +101,9 @@ async def async_get_action_capabilities(hass: HomeAssistant, config: Dict[str, A
     
     if entity and DOMAIN in entity.options:
         hausbus_type = entity.options[DOMAIN].get("hausbus_type")
+        hausbus_special_type = entity.options[DOMAIN].get("hausbus_special_type")
 
-        _LOGGER.debug(f"hausbus_type {hausbus_type}")
+        _LOGGER.debug(f"hausbus_type {hausbus_type} hausbus_special_type {hausbus_special_type}")
 
         if hausbus_type == "HausbusDimmerLight":
           if service_type.startswith("dimmer_set_brightness"):
@@ -178,6 +184,12 @@ async def async_get_action_capabilities(hass: HomeAssistant, config: Dict[str, A
               vol.Optional("disabled_duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
             })
 
+        #if hausbus_special_type==1:
+        #  if service_type.startswith("ssr_control"):
+        #    SCHEMA = vol.Schema({
+        #      vol.Required("power", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        #    })
+            
         result = {"extra_fields": SCHEMA}
 
     _LOGGER.debug(f"returns {result}")

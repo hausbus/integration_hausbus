@@ -181,11 +181,6 @@ class HausbusLight(HausbusEntity, LightEntity):
       """Convert HA brightness (0–255) to 0–100%."""
       brightness = max(0, min(255, brightness))  # clamp
       return round(brightness * 100 / 255)
-  
-    @staticmethod
-    def is_light_channel(class_id: int) -> bool:
-        """Check if a class_id is a light."""
-        return class_id in (Dimmer.CLASS_ID, RGBDimmer.CLASS_ID, Led.CLASS_ID, LogicalButton.CLASS_ID)
 
     def set_light_color(self, red: int, green: int, blue: int) -> None:
         """Set the color of a light channel."""

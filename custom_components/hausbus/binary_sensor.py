@@ -84,11 +84,6 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
 
         self._attr_is_on = False
 
-    @staticmethod
-    def is_binary_sensor_channel(class_id: int, name:str) -> bool:
-        """Check if a class_id is a binary sensor. Instances thats name start with Taster are handled as EventEntities """
-        return class_id == Taster.CLASS_ID and not name.startswith("Taster")
-
     def binary_sensor_covered(self) -> None:
         """Covered binary sensor channel."""
         LOGGER.debug("BinarySensor covered %s %s", self._device.device_id, self._attr_name)

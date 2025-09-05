@@ -74,6 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: HausbusConfigEntr
         "async_switch_set_configuration",
     )
 
+
     async def async_add_switch(channel: HausbusEntity) -> None:
         """Add switch from Haus-Bus."""
         if isinstance(channel, HausbusSwitch):
@@ -90,11 +91,6 @@ class HausbusSwitch(HausbusEntity, SwitchEntity):
         super().__init__(channel, device)
 
         self._attr_is_on = False
-
-    @staticmethod
-    def is_switch_channel(class_id: int) -> bool:
-        """Check if a class_id is a switch."""
-        return class_id == Schalter.CLASS_ID
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn off action."""

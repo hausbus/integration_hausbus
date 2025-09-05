@@ -78,11 +78,6 @@ class HausbusCover(HausbusEntity, CoverEntity):
         self._is_closing: bool | None = None
         self._attr_unit_of_measurement = "%"
 
-    @staticmethod
-    def is_cover_channel(class_id: int) -> bool:
-        """Check if a class_id is a cover."""
-        return class_id == Rollladen.CLASS_ID
-
     @property
     def current_cover_position(self) -> int | None:
         """Actual position as percent (0 = closed, 100 = open)."""

@@ -85,11 +85,6 @@ class HausBusEvent(HausbusEntity, EventEntity):
 
         self._attr_event_types = ["button_pressed", "button_released", "button_clicked", "button_double_clicked", "button_hold_start", "button_hold_end"]
 
-    @staticmethod
-    def is_event_channel(class_id: int) -> bool:
-        """Check if a class_id is a Taster."""
-        return class_id == Taster.CLASS_ID
-
     def get_hardware_status(self) -> None:
         """Request status and configuration of this channel from hardware."""
         super().get_hardware_status()
