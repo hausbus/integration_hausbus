@@ -66,6 +66,7 @@ class HausbusEntity(Entity):
       registry.async_update_entity_options(self.entity_id, DOMAIN, {"hausbus_type": self.__class__.__name__})
       if self._special_type!=0:
         registry.async_update_entity_options(self.entity_id, DOMAIN, {"hausbus_special_type": self._special_type})
+      LOGGER.debug(f"added_to_hass {self._attr_name} type {self.__class__.__name__} special_type {self._special_type}")
 
     async def ensure_configuration(self) -> bool:
       """ensures that the channel configuration is known"""

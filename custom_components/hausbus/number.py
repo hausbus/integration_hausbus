@@ -78,11 +78,6 @@ class HausbusControl(HausbusEntity, NumberEntity):
         self._channel.toggleByDuty(value, 0)
         self.set_native_value_internal(value);
 
-    # async def async_added_to_hass(self):
-    #  """Ensure initial state is written."""
-    #  await super().async_added_to_hass()
-    #  self.async_write_ha_state()
-
     def handle_event(self, data: Any) -> None:
         """Handle control events from Haus-Bus."""
         if isinstance(data, SchalterEvToggleByDuty):
