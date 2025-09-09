@@ -50,9 +50,14 @@ from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvClicked import EvCli
 from pyhausbus.de.hausbus.homeassistant.proxy.taster.data.EvDoubleClick import EvDoubleClick
 from pyhausbus.de.hausbus.homeassistant.proxy.Taster import Taster
 from pyhausbus.de.hausbus.homeassistant.proxy.PowerMeter import PowerMeter
-from custom_components.hausbus.sensor import HausbusPowerMeter
-from pyhausbus.de.hausbus.homeassistant.proxy import ProxyFactory
+from pyhausbus.de.hausbus.homeassistant.proxy.rFIDReader.data.EvData import EvData as RfidEvData
+
+from custom_components.hausbus.sensor import HausbusPowerMeter, \
+  HausbusRfidSensor
+from pyhausbus.de.hausbus.homeassistant.proxy import ProxyFactory, \
+  temperatursensor
 from custom_components.hausbus.number import HausbusControl
+from pyhausbus.de.hausbus.homeassistant.proxy.RFIDReader import RFIDReader
 
 DOMAIN = "hausbus"
 
@@ -79,7 +84,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         # Listener für state_changed registrieren
         # self.hass.bus.async_listen("state_changed", self._state_changed_listener)
 
-        #asyncio.run_coroutine_threadsafe(self.async_delete_devices(), self.hass.loop)
+        # asyncio.run_coroutine_threadsafe(self.async_delete_devices(), self.hass.loop)
 
     async def createDiscoveryButtonAndStartDiscovery(self):
       """Creates a Button to manually start device discovery and starts discovery"""
@@ -136,7 +141,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         if device is not None and channel_list is not None and self.get_channel_id(object_id) not in channel_list:
 
             new_channel = None
-            
+
             # Specials
             if device.is_leistungs_regler() and isinstance(instance, Schalter) and "Rote Modul LED" not in instance.getName():
               new_channel = HausbusControl(instance, device)
@@ -178,7 +183,9 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
             elif isinstance(instance, PowerMeter):
               new_channel = HausbusPowerMeter(instance, device)
               new_domain = SENSOR_DOMAIN
-            # BINARY_SENSOR only for digital inputs and not for pushbuttons
+            elif isinstance(instance, RFIDReader):
+              new_channel = HausbusRfidSensor(instance, device)
+              new_domain = SENSOR_DOMAIN
             elif isinstance(instance, Taster):
               # if not instance.getName().startswith("Taster"):
               new_channel = HausbusBinarySensor(instance, device)
@@ -281,9 +288,22 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               LOGGER.debug(f"name for firmwareId {device.firmware_id}, fcke: {device.fcke}, classId {instanceObjectId.getClassId()}, instanceId {instanceObjectId.getInstanceId()} is {name}")
 
               if deviceId == 22784 or deviceId == 29725:
-                className = ProxyFactory.getBusClassNameForClass(instanceObjectId.getClassId()).replace("pyhausbus.de.hausbus.homeassistant.proxy.", "")
+                className = ProxyFactory.getBusClassNameForClass(instanceObjectId.getClassId()).rsplit(".", 1)[-1]
                 name = f"{className} {instanceObjectId.getInstanceId()}"
                 LOGGER.debug(f"specialName {name}")
+
+              # automatische Namen für dynamische Elemente, die nicht alle in den Template stehen sollen
+              if name is None:
+                className = ProxyFactory.getBusClassNameForClass(instanceObjectId.getClassId()).rsplit(".", 1)[-1]
+                
+                name = {
+                  "Temperatursensor": f"Temperatursensor {instanceObjectId.getInstanceId()}",
+                  "Feuchtesensor": f"Feuchtesensor {instanceObjectId.getInstanceId()}",
+                  "Helligkeitssensor": f"Helligkeitssensor {instanceObjectId.getInstanceId()}",
+                  "RFIDReader": f"RFIDReader {instanceObjectId.getInstanceId()}",
+                  "Drucksensor": f"Drucksensor {instanceObjectId.getInstanceId()}",
+                  "PT1000": f"PT1000 {instanceObjectId.getInstanceId()}",
+                }.get(className, None)
 
               if name is not None:
                 instance.setName(name)
@@ -314,6 +334,11 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         if isinstance(channel, HausbusEntity):
           LOGGER.debug(f" handle_event {channel} {data}")
           channel.handle_event(data)
+
+        if isinstance(channel, HausbusRfidSensor) and isinstance(data, RfidEvData):
+          LOGGER.debug(f" rfid data {channel} {data}")
+          self.hass.loop.call_soon_threadsafe(lambda: self.hass.bus.async_fire("hausbus_rfid_event", {"device_id": device.hass_device_entry_id, "tag": data.getTagID()}))
+
         else:
           LOGGER.debug(f"kein zugehöriger channel")
 

@@ -25,12 +25,15 @@ from pyhausbus.de.hausbus.homeassistant.proxy.AnalogEingang import AnalogEingang
 from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.EvStatus import EvStatus as AnalogEingangEvStatus
 from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Status import Status as AnalogEingangStatus
 from pyhausbus.de.hausbus.homeassistant.proxy.analogEingang.data.Configuration import Configuration as AnalogEingangConfiguration
+from pyhausbus.de.hausbus.homeassistant.proxy.rFIDReader.data.EvData import EvData as RfidEvData
+from pyhausbus.de.hausbus.homeassistant.proxy.rFIDReader.data.EvError import EvError as RfidEvError
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN, SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
+from datetime import datetime
 
 from homeassistant.const import LIGHT_LUX, PERCENTAGE, UnitOfTemperature, UnitOfPower
 import voluptuous as vol
@@ -39,6 +42,7 @@ from .device import HausbusDevice
 from .entity import HausbusEntity
 
 import logging
+from pyhausbus.de.hausbus.homeassistant.proxy.RFIDReader import RFIDReader
 LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -346,4 +350,36 @@ class HausbusAnalogEingang(HausbusSensor):
         reportTimeBase, maxReportTime = HausbusSensor.getTimeIntervalMapping(manual_event_interval)
         self._channel.setConfiguration(self._configuration.getLowerThreshold(), self._configuration.getUpperThreshold(), reportTimeBase,1,maxReportTime, auto_event_diff,correction,0)
         self._channel.getConfiguration()
+
+class HausbusRfidSensor(HausbusSensor):
+    """Representation of a Haus-Bus RFID reader."""
+
+    def __init__(self, channel: RFIDReader, device: HausbusDevice) -> None:
+        """Set up sensor."""
+        super().__init__(channel, device)
+
+        self._attr_native_unit_of_measurement = None
+        self._attr_device_class = None
+        self._attr_native_value = None
+
+    def get_hardware_status(self) -> None:
+        """overriding base class to suppress getStatus calls"""
+        pass
+
+    def handle_event(self, data: Any) -> None:
+        """Handle rfid events from Haus-Bus."""
+        
+        if isinstance(data, RfidEvData):
+          LOGGER.debug(f"rfid data: {data}")
+          self._attr_native_value = data.getTagID();
           
+          self._attr_extra_state_attributes["last_tag"] = self._attr_native_value
+          self._attr_extra_state_attributes["last_time"] = datetime.now().isoformat()
+          self._attr_extra_state_attributes["last_error"] = ""
+          self.schedule_update_ha_state()
+           
+        elif isinstance(data, RfidEvError):
+          LOGGER.debug(f"rfid error: {data}")
+          self._attr_extra_state_attributes["last_tag"] = ""
+          self._attr_extra_state_attributes["last_time"] = datetime.now().isoformat()
+          self._attr_extra_state_attributes["last_error"] = data.getErrorCode()

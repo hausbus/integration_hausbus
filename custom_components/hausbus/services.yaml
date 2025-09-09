@@ -656,9 +656,20 @@ switch_on:
   name: Switch on after delay
   description: Switches a relay for given duration and on delay time
   fields:
+    duration:
+      name: Switch duration
+      description: If configured greater than 0 the switch disables after this time
+      required: true
+      default: 0
+      example: 600
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: slider
     onDelay:
       name: Delay before the switch is switched on
-      description: If configured greater than 0 the switch disables after the given time.
+      description: If configured greater than 0 the switch enables after the given time.
       required: true
       default: 0
       example: 600
@@ -724,8 +735,8 @@ switch_set_configuration:
       example: 600
       selector:
         number:
-          min: 1
-          max: 65535
+          min: 0
+          max: 255
           mode: slider
     off_delay_time:
       name: Delay time before switching off
@@ -736,7 +747,7 @@ switch_set_configuration:
       selector:
         number:
           min: 1
-          max: 65535
+          max: 255
           mode: slider
     time_base:
       name: Timebase for time parameters
