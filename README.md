@@ -40,7 +40,7 @@ The easiest way to install **Hausbus* is via **[HACS (Home Assistant Community S
 
 ### Manual Steps:
 
-1. Ensure **[HACS](https://hacs.xyz/docs/setup/download)** is installed in Home Assistant.
+1. Ensure **[HACS](https://hacs.xyz/docs/use/download/download/#to-download-hacs)** is installed in Home Assistant.
 2. Go to **HACS → Custom Repositories**.
 3. Add this repository: `https://github.com/hausbus/integration_hausbus` as type `Integration`
 4. Install **Hausbus** from HACS.
@@ -74,3 +74,4 @@ To remove the Haus-Bus integration from Home Assistant, follow these steps:
    - Clean up local device registry entries
 
 After removal, all Haus-Bus devices and settings will be fully cleaned from Home Assistant.
+
