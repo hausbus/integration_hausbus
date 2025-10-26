@@ -16,7 +16,7 @@
   "dependencies": ["light", "switch", "sensor", "binary_sensor","event", "cover", "button","number"],
   "quality_scale": "bronze",
   "requirements": [
-    "pyhausbus==1.0.21"
+    "pyhausbus==1.0.22"
   ],
   "single_config_entry": true,
   "version": "1.0.2"
