@@ -9,6 +9,7 @@ from homeassistant.components.device_automation.trigger import DEVICE_TRIGGER_BA
 from homeassistant.exceptions import HomeAssistantError
 
 import logging
+import asyncio
 LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "hausbus"
@@ -71,12 +72,20 @@ async def async_attach_trigger(hass: HomeAssistant,config: ConfigType,action: Ca
             return
         if event.data.get("subtype") != config["subtype"]:
             return
-        await action({
-            "platform": "device",
-            "domain": DOMAIN,
-            "device_id": config["device_id"],
-            "type": config["type"],
-            "subtype": config["subtype"],
-        })
+        
+        try:
+            result = action(
+                {
+                    "platform": "device",
+                    "domain": DOMAIN,
+                    "device_id": config["device_id"],
+                    "type": config["type"],
+                    "subtype": config["subtype"],
+                }
+            )
+            if asyncio.iscoroutine(result):
+                await result
+        except Exception as e:
+            LOGGER.error("Error executing Haus-Bus action: %s", e)
 
     return hass.bus.async_listen(event_type, handle_event)
