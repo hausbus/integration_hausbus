@@ -223,7 +223,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
 
         LOGGER.debug(f"busDataReceived with data = {data} from {object_id}")
 
-        controller = Controller(object_id.getValue())
+        controller = Controller.create(object_id.getDeviceId(), 1)
 
         # ModuleId -> getConfiguration
         if isinstance(data, ModuleId):
