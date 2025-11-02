@@ -295,15 +295,16 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
               # automatische Namen für dynamische Elemente, die nicht alle in den Template stehen sollen
               if name is None:
                 className = ProxyFactory.getBusClassNameForClass(instanceObjectId.getClassId()).rsplit(".", 1)[-1]
-                
-                name = {
+                name = f"{className} {instanceObjectId.getInstanceId()}";
+                LOGGER.debug(f"generic instance name {name}")
+                '''name = {
                   "Temperatursensor": f"Temperatursensor {instanceObjectId.getInstanceId()}",
                   "Feuchtesensor": f"Feuchtesensor {instanceObjectId.getInstanceId()}",
                   "Helligkeitssensor": f"Helligkeitssensor {instanceObjectId.getInstanceId()}",
                   "RFIDReader": f"RFIDReader {instanceObjectId.getInstanceId()}",
                   "Drucksensor": f"Drucksensor {instanceObjectId.getInstanceId()}",
                   "PT1000": f"PT1000 {instanceObjectId.getInstanceId()}",
-                }.get(className, None)
+                }.get(className, None)'''
 
               if name is not None:
                 instance.setName(name)
