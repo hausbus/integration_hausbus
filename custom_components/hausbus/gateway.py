@@ -229,7 +229,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         if isinstance(data, ModuleId):
           LOGGER.debug(f"got moduleId of {object_id.getDeviceId()} with data: {data}")
           self.add_device(str(object_id.getDeviceId()), data)
-          controller.getConfiguration()
           return
 
         # Bei unbekanntem Gerät -> ModuleId abfragen
@@ -251,8 +250,6 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
 
             # Mit der Konfiguration registrieren wir das Device bei HASS
             asyncio.run_coroutine_threadsafe(self.async_create_device_registry(device), self.hass.loop).result()
-
-            controller.getRemoteObjects()
             return
 
         # RemoteObjects -> Channel anlegen
