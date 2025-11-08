@@ -259,7 +259,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
           device = self.get_device(object_id)
           if device is not None:
 
-            instances: list[ABusFeature] = self.home_server.getDeviceInstances(object_id.getValue(), data)
+            instances: list[ABusFeature] = self.home_server.getDeviceInstances(object_id.getDeviceId(), data)
 
             # Spezialmodule
             if (device.is_special_type()):
