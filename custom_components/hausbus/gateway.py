@@ -386,7 +386,7 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         model=device.model_id,
         name=device.name
       )
-      LOGGER.debug(f"hassEntryId = {device_entry.id}")
+      LOGGER.debug("hassEntryId = %s, device_id = %s, manufacturer = HausBus, model = %s, name = %s", device_entry.id, device.device_id, device.model_id, device.name)
       device.set_hass_device_entry_id(device_entry.id)
 
     def was_automatic_get_module_id_already_sent(self, device_id: int) -> bool:
