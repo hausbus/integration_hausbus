@@ -82,13 +82,13 @@ dimmer_set_configuration:
       name: Dimming mode
       description: Defines the mode the dimmer shall work in
       required: true
-      default: "dimm_trailing_edge"
-      example: "dimm_trailing_edge"
+      default: "dim_trailing_edge"
+      example: "dim_trailing_edge"
       selector:
         select:
           options:
-            - "dimm_trailing_edge"
-            - "dimm_leading_edge"
+            - "dim_trailing_edge"
+            - "dim_leading_edge"
             - "switch_only"
     dimming_time:
       name: Time for dimming

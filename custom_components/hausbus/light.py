@@ -79,7 +79,7 @@ async def async_setup_entry(hass: HomeAssistant,config_entry: HausbusConfigEntry
     platform.async_register_entity_service(
         "dimmer_set_configuration",
         {
-            vol.Required("mode", default="dimm_trailing_edge"): vol.In(["dimm_trailing_edge", "dimm_leading_edge", "switch_only"]),
+            vol.Required("mode", default="dim_trailing_edge"): vol.In(["dim_trailing_edge", "dim_leading_edge", "switch_only"]),
             vol.Required("dimming_time", default=12): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
             vol.Required("ramp_time", default=60): vol.All(vol.Coerce(int), vol.Range(min=1, max=255)),
             vol.Required("dimming_start_brightness", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
