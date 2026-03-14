@@ -161,7 +161,7 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
         if not await self.ensure_configuration():
           raise HomeAssistantError("Configuration could not be read. Please repeat command.")
 
-        eventMask = MEventMask()
+        eventMask = MEventMask(0)
         eventMask.setNotifyOnCovered(event_button_pressed_active)
         eventMask.setNotifyOnFree(event_button_released_active)
         eventMask.setNotifyOnClicked(event_button_clicked_active)
@@ -171,7 +171,7 @@ class HausbusBinarySensor(HausbusEntity, BinarySensorEntity):
         eventMask.setEnableFeedBack(led_feedback_active)
         eventMask.setReserved1(self._configuration.getEventMask().isReserved1())
 
-        optionMask = MOptionMask()
+        optionMask = MOptionMask(0)
         optionMask.setPulldown(self._configuration.getOptionMask().isPulldown())
         optionMask.setInverted(inverted)
 

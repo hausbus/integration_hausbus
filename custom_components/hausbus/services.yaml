@@ -811,7 +811,7 @@ cover_set_configuration:
 push_button_configure_events:
   target:
     entity:
-      domain: event
+      domain: binary_sensor
   name: Disable oder enable input events
   description: Disables all events from this input for the given time or activates them again.
   fields:
@@ -842,7 +842,7 @@ push_button_configure_events:
 push_button_set_configuration:
   target:
     entity:
-      domain: event
+      domain: binary_sensor
   name: Configure input
   description: Configured all parameters for the input 
   fields:
