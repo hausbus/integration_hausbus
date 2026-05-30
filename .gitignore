@@ -18,3 +18,4 @@ config/*
 !config/configuration.yaml
 /.project
 /.pydevproject
+/releaseMe.cmd
