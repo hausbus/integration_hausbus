@@ -11,10 +11,7 @@
                 "description": "Device discovery timeout. Click Submit to try again."
             },
             "user": {
-                "description": "Perform auto-discovery of Haus-Bus devices.",
-                "data": {
-                    "host": "Broadcast IP (optional)"
-                }
+                "description": "Perform auto-discovery of Haus-Bus devices."
             }
         }
     },

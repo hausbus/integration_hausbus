@@ -6,20 +6,33 @@ import asyncio
 from dataclasses import dataclass
 import logging
 from typing import TypeAlias
+
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr
-from homeassistant.const import CONF_HOST
+from homeassistant.helpers import config_validation as cv
 from pyhausbus.BusHandler import BusHandler
+
 from .gateway import HausbusGateway
 from .const import DOMAIN
 
-# , Platform.NUMBER
 PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.EVENT, Platform.COVER, Platform.BUTTON, Platform.NUMBER]
 
 LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Optional(CONF_HOST): cv.string,
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 
 @dataclass
@@ -38,9 +51,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["entity_info"] = {}
 
-    host = entry.data.get(CONF_HOST)
+    host = hass.data.get(DOMAIN, {}).get("host")
     if host:
         BusHandler.getInstance().broadcastIp = host
+
     gateway = HausbusGateway(hass, entry)
     entry.runtime_data = HausbusConfig(gateway)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -54,32 +68,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Haus-Bus integration (global services etc.)."""
 
-    async def discover_devices(call: ServiceCall):
-      entries = hass.config_entries.async_entries(DOMAIN)
-      if not entries:
-        raise HomeAssistantError("No Hausbus-Gateway available")
+    domain_config = config.get(DOMAIN, {})
+    host = domain_config.get(CONF_HOST)
+    hass.data.setdefault(DOMAIN, {})
+    if host:
+        LOGGER.debug("using direct bridge ip %s", host)
+        BusHandler.getInstance().setBroadcastIp(host)
 
-      LOGGER.debug("Search devices service called")
-      gateway = entries[0].runtime_data.gateway
-      gateway.home_server.searchDevices()
+    async def discover_devices(call: ServiceCall):
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            raise HomeAssistantError("No Hausbus-Gateway available")
+
+        LOGGER.debug("Search devices service called")
+        gateway = entries[0].runtime_data.gateway
+        gateway.home_server.searchDevices()
 
     hass.services.async_register(DOMAIN, "discover_devices", discover_devices)
 
     async def reset_service(call):
-      entries = hass.config_entries.async_entries(DOMAIN)
-      if not entries:
-        raise HomeAssistantError("No Hausbus-Gateway available")
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            raise HomeAssistantError("No Hausbus-Gateway available")
 
-      device_id = call.data.get("device_id")
-      if not device_id or not isinstance(device_id, str):
-        raise HomeAssistantError("device_id missing")
+        device_id = call.data.get("device_id")
+        if not device_id or not isinstance(device_id, str):
+            raise HomeAssistantError("device_id missing")
 
-      LOGGER.debug("Reset device %s called", device_id)
-      gateway = entries[0].runtime_data.gateway
-      try:
-        gateway.resetDevice(device_id)
-      except Exception as err:  # noqa: BLE001
-        raise HomeAssistantError(f"Failed to reset device {device_id}: {err}") from err
+        LOGGER.debug("Reset device %s called", device_id)
+        gateway = entries[0].runtime_data.gateway
+        try:
+            gateway.resetDevice(device_id)
+        except Exception as err:  # noqa: BLE001
+            raise HomeAssistantError(f"Failed to reset device {device_id}: {err}") from err
 
     hass.services.async_register(DOMAIN, "reset_device", reset_service)
 
