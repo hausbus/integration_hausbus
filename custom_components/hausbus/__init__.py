@@ -11,6 +11,8 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.const import CONF_HOST
+from pyhausbus.BusHandler import BusHandler
 from .gateway import HausbusGateway
 from .const import DOMAIN
 
@@ -36,6 +38,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["entity_info"] = {}
 
+    host = entry.data.get(CONF_HOST)
+    if host:
+        BusHandler.getInstance().broadcastIp = host
     gateway = HausbusGateway(hass, entry)
     entry.runtime_data = HausbusConfig(gateway)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

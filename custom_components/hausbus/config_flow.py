@@ -12,6 +12,7 @@ from pyhausbus.HausBusUtils import HOMESERVER_DEVICE_ID
 from pyhausbus.HomeServer import HomeServer
 from pyhausbus.IBusDataListener import IBusDataListener
 from pyhausbus.ObjectId import ObjectId
+from homeassistant.const import CONF_HOST
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -23,7 +24,9 @@ _LOGGER = logging.getLogger(__name__)
 
 DEVICE_SEARCH_TIMEOUT = 5
 
-STEP_USER_SCHEMA = vol.Schema({})
+STEP_USER_SCHEMA = vol.Schema({
+    vol.Optional(CONF_HOST): str,
+})
 
 
 class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[misc]
@@ -31,6 +34,7 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
 
     def __init__(self) -> None:
         """Initialize the config flow."""
+        self._host: str | None = None
         self._found_device = False
         self._search_task: asyncio.Task | None = None
         self.home_server = HomeServer()
@@ -51,6 +55,7 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
     ) -> FlowResult:
         """Handle the initial step."""
         if user_input is not None:
+            self._host = user_input.get(CONF_HOST)
             # start searching for devices
             return await self.async_step_wait_for_device()
 
@@ -85,7 +90,10 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
 
     async def async_step_search_complete(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Create a configuration entry for the hausbus devices."""
-        return self.async_create_entry(title="Haus-Bus", data={})
+        return self.async_create_entry(
+            title="Haus-Bus", 
+            data={CONF_HOST: self._host} if self._host else {},
+            )
 
     async def _async_wait_for_device(self) -> None:
         """Start searching for devices and wait until at least one device was found or timeout is reached."""
