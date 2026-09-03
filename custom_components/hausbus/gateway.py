@@ -5,8 +5,10 @@ import logging
 import asyncio
 import time
 from collections.abc import Callable, Coroutine
+from datetime import timedelta
 from typing import Any, cast
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+from homeassistant.helpers.event import async_track_time_interval
 from pyhausbus.ABusFeature import ABusFeature
 from pyhausbus.BusDataMessage import BusDataMessage
 from pyhausbus.de.hausbus.homeassistant.proxy.Controller import Controller, EIndex
@@ -76,19 +78,57 @@ class HausbusGateway(IBusDataListener):  # type: ignore[misc]
         self.devices: dict[str, HausbusDevice] = {}
         self.channels: dict[str, dict[tuple[str, str], HausbusEntity]] = {}
         self.events: dict[int, HausBusEvent] = {}
-        self.home_server = HomeServer()
-        self.home_server.addBusEventListener(self)
-        self.home_server.addBusDeviceListener(self)
+        self.home_server: HomeServer | None = None
         self._new_channel_listeners: dict[
             str, Callable[[HausbusEntity], Coroutine[Any, Any, None]]
         ] = {}
         # to prevent duplicate channels but to allow to add channels even if it was registered before
         self.registered_channels: set[int] = set()
+        self._keepalive_cancel: Callable[[], None] | None = None
+        self._keepalive_index = 0
 
         # Listener für state_changed registrieren
         # self.hass.bus.async_listen("state_changed", self._state_changed_listener)
 
         # asyncio.run_coroutine_threadsafe(self.async_delete_devices(), self.hass.loop)
+
+    async def async_setup(self) -> None:
+        """Construct the (blocking, network-verifying) HomeServer off the event loop."""
+        self.home_server = await self.hass.async_add_executor_job(HomeServer)
+        self.home_server.addBusEventListener(self)
+        self.home_server.addBusDeviceListener(self)
+        self._keepalive_cancel = async_track_time_interval(
+            self.hass, self._keepalive_tick, timedelta(seconds=25)
+        )
+
+    def shutdown(self) -> None:
+        """Stop background activity started by this gateway."""
+        if self._keepalive_cancel is not None:
+            self._keepalive_cancel()
+            self._keepalive_cancel = None
+
+    def _keepalive_tick(self, now) -> None:
+        """Ping one known device per tick, round-robin.
+
+        Modules reached only via RS485 through another module's LAN bridge only
+        get their spontaneous EvStart/EvClosed/EvOpen telegrams relayed onto the
+        LAN while the bridge has recently exchanged request/response traffic
+        with them; a device that is never actively queried again after
+        discovery eventually stops having its events relayed. A steady trickle
+        of pings (mirroring what ioBroker.hausbus_de's checkAlive() does) keeps
+        that relay alive for every known device, not just the directly
+        LAN-connected one.
+        """
+        device_ids = list(self.devices)
+        if not device_ids:
+            return
+        self._keepalive_index %= len(device_ids)
+        device_id = device_ids[self._keepalive_index]
+        self._keepalive_index += 1
+        try:
+            Controller.create(int(device_id), 1).ping()
+        except Exception:  # noqa: BLE001
+            LOGGER.debug("keepalive ping failed for device %s", device_id, exc_info=True)
 
     async def createDiscoveryButtonAndStartDiscovery(self):
       """Creates a Button to manually start device discovery and starts discovery"""

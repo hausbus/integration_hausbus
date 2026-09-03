@@ -15,7 +15,7 @@ from pyhausbus.ObjectId import ObjectId
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlowResult
 
 from .const import DOMAIN
 
@@ -32,13 +32,13 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._found_device = False
-        self._search_task: asyncio.Task | None = None
-        self.home_server = HomeServer()
-        self.home_server.addBusEventListener(self)
+        self._search_task: asyncio.Task[None] | None = None
+        self.home_server: HomeServer | None = None
 
     def remove_bus_event_listeners(self) -> None:
         """Cleanup after finishing the config flow."""
-        self.home_server.removeBusEventListener(self)
+        if self.home_server is not None:
+            self.home_server.removeBusEventListener(self)
         #self.home_server.removeBusEventListener(self.home_server)
 
     def async_remove(self) -> None:
@@ -48,7 +48,7 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         if user_input is not None:
             # start searching for devices
@@ -59,7 +59,7 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
             step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
         )
 
-    async def async_step_wait_for_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_wait_for_device(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Wait for a hausbus device to be found."""
         if not self._search_task:
             self._search_task = self.hass.async_create_task(self._async_wait_for_device())
@@ -76,19 +76,22 @@ class ConfigFlow(IBusDataListener, config_entries.ConfigFlow, domain=DOMAIN):  #
 
         return self.async_show_progress_done(next_step_id="search_complete")
 
-    async def async_step_search_timeout(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_search_timeout(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Inform the user that no device has been found."""
         if user_input is not None:
             return await self.async_step_wait_for_device()
 
         return self.async_show_form(step_id="search_timeout")
 
-    async def async_step_search_complete(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_search_complete(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Create a configuration entry for the hausbus devices."""
         return self.async_create_entry(title="Haus-Bus", data={})
 
     async def _async_wait_for_device(self) -> None:
         """Start searching for devices and wait until at least one device was found or timeout is reached."""
+        if self.home_server is None:
+            self.home_server = await self.hass.async_add_executor_job(HomeServer)
+            self.home_server.addBusEventListener(self)
         self.hass.async_add_executor_job(self.home_server.searchDevices)
         # wait for up to 5 seconds to find devices
         await asyncio.wait_for(self._check_device_found(), DEVICE_SEARCH_TIMEOUT)

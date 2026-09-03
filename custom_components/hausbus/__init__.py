@@ -12,7 +12,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from pyhausbus.BusHandler import BusHandler
 
@@ -56,6 +56,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> b
         BusHandler.getInstance().broadcastIp = host
 
     gateway = HausbusGateway(hass, entry)
+    try:
+        await gateway.async_setup()
+    except TimeoutError as err:
+        raise ConfigEntryNotReady(f"Haus-Bus nicht erreichbar: {err}") from err
     entry.runtime_data = HausbusConfig(gateway)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -111,6 +115,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: HausbusConfigEntry) -> 
     """Unload a config entry."""
     gateway = entry.runtime_data.gateway
 
+    gateway.shutdown()
     gateway.home_server.removeBusEventListener(gateway)
     hass.services.async_remove(DOMAIN, "discover_devices")
     hass.services.async_remove(DOMAIN, "reset_device")

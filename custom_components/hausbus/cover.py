@@ -13,9 +13,10 @@ from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.params.EDirection import
 from pyhausbus.de.hausbus.homeassistant.proxy.rollladen.data.Configuration import Configuration
 
 from homeassistant.helpers import entity_platform
+from homeassistant.helpers.event import async_call_later
 from homeassistant.components.cover import DOMAIN as COVER_DOMAIN, CoverEntity, CoverEntityFeature, CoverDeviceClass
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.exceptions import HomeAssistantError
 
@@ -77,6 +78,7 @@ class HausbusCover(HausbusEntity, CoverEntity):
         self._is_opening: bool | None = None
         self._is_closing: bool | None = None
         self._attr_unit_of_measurement = "%"
+        self._poll_cancel: CALLBACK_TYPE | None = None
 
     @property
     def current_cover_position(self) -> int | None:
@@ -100,20 +102,71 @@ class HausbusCover(HausbusEntity, CoverEntity):
         """Returns true if cover is actually closing"""
         return self._is_closing
 
+    def _movement_timeout(self) -> float:
+        """Estimate how long a full movement takes, from the known configuration."""
+        default = 30.0
+        close_time = getattr(self._configuration, "getCloseTime", lambda: None)() or default
+        open_time = getattr(self._configuration, "getOpenTime", lambda: None)() or default
+        return max(close_time, open_time) + 2.0
+
+    def _schedule_status_poll(self, delay: float) -> None:
+        """Actively request the current status after `delay` seconds.
+
+        Some bridge modules only relay the EvStart/EvClosed/EvOpen telegrams a
+        Rollladen fires spontaneously when it is directly connected via LAN; for
+        one daisy-chained via RS485 behind another module, those unsolicited
+        telegrams never make it onto the LAN, so the entity would otherwise never
+        pick up the resulting position change. getStatus() request/response
+        traffic does reliably reach such modules, so poll for it instead.
+        """
+        if self._poll_cancel is not None:
+            self._poll_cancel()
+            self._poll_cancel = None
+
+        def _poll(_now) -> None:
+            self._poll_cancel = None
+            self._channel.getStatus()
+
+        self._poll_cancel = async_call_later(self.hass, delay, _poll)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel any pending status poll when the entity is removed."""
+        if self._poll_cancel is not None:
+            self._poll_cancel()
+            self._poll_cancel = None
+
+    def _warm_relay(self) -> None:
+        """Refresh the request/response relay right before a command.
+
+        A module reached only via RS485 through another module's LAN bridge only
+        gets its spontaneous EvStart/EvClosed/EvOpen relayed onto the LAN while
+        the bridge has recently exchanged request/response traffic with it. A
+        getStatus() right before the actual command gives the upcoming EvStart a
+        chance to be relayed live, instead of only finding out the result once
+        the delayed poll below fires.
+        """
+        self._channel.getStatus()
+
     async def async_open_cover(self, **kwargs):
         """Opens the cover."""
         LOGGER.debug(f"async_open_cover")
+        self._warm_relay()
         self._channel.start(EDirection.TO_OPEN)
+        self._schedule_status_poll(self._movement_timeout())
 
     async def async_close_cover(self, **kwargs):
         """Closes the cover."""
         LOGGER.debug(f"async_close_cover")
+        self._warm_relay()
         self._channel.start(EDirection.TO_CLOSE)
+        self._schedule_status_poll(self._movement_timeout())
 
     async def async_stop_cover(self, **kwargs):
         """Stops the actual cover movevent."""
         LOGGER.debug(f"async_stop_cover")
+        self._warm_relay()
         self._channel.stop()
+        self._schedule_status_poll(1.0)
 
     async def async_set_cover_position(self, **kwargs):
         """Moves cover to the given position."""
@@ -127,7 +180,9 @@ class HausbusCover(HausbusEntity, CoverEntity):
         if position < 0:
             position = 0
 
+        self._warm_relay()
         self._channel.moveToPosition(100 - position)
+        self._schedule_status_poll(self._movement_timeout())
 
     def handle_event(self, data: Any) -> None:
         """Handle haus-bus cover events."""
